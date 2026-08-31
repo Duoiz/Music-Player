@@ -71,7 +71,7 @@ export default function SearchScreen() {
 			setResults(songs)
 		} catch (err) {
 			console.error('Search error:', err)
-			setError('Could not connect to server. Make sure the backend is running.')
+			setError('Public API servers are currently unreachable. Please try again.')
 			setResults([])
 		} finally {
 			setIsSearching(false)
@@ -182,7 +182,7 @@ export default function SearchScreen() {
 						]}
 					>
 						Search for your favorite songs above.{'\n'}
-						Make sure the backend server is running.
+						Connected to the public Piped network.
 					</Text>
 				</GlassCard>
 			)}
