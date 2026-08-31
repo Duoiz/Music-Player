@@ -1,0 +1,17 @@
+{
+	"name": "music-player-backend",
+	"version": "1.0.0",
+	"description": "yt-dlp backend server for the Fruitiger Aero Music Player",
+	"main": "index.js",
+	"scripts": {
+		"start": "node index.js",
+		"dev": "node --watch index.js"
+	},
+	"dependencies": {
+		"cors": "^2.8.5",
+		"express": "^4.21.0",
+		"yt-dlp-exec": "^1.0.2",
+		"yt-search": "^2.13.1",
+		"ytsr": "^3.8.4"
+	}
+}
