@@ -160,21 +160,16 @@ export function SongListItem({
 					<Text
 						style={[
 							styles.title,
-							theme.id === 'frutiger-aero' ? {
-								color: isActive ? 'rgba(180,240,255,0.95)' : 'rgba(180,220,240,0.9)',
-								fontSize: 14,
-								fontFamily: 'Rajdhani_700Bold',
-								textTransform: 'lowercase',
-								letterSpacing: 0.3,
-								textShadowColor: isActive ? 'rgba(0,200,255,0.8)' : 'rgba(0,0,0,0.5)',
-								textShadowOffset: isActive ? { width: 0, height: 0 } : { width: 0, height: 1 },
-								textShadowRadius: isActive ? 12 : 2,
-							} : {
+							{
 								color: isActive
 									? theme.colors.accentPrimary
 									: theme.colors.textPrimary,
 								fontSize: theme.typography.bodySize,
 								fontWeight: theme.typography.bodyWeight,
+								fontFamily: theme.typography.fontFamily,
+								textShadowColor: theme.typography.textShadowColor,
+								textShadowOffset: theme.typography.textShadowOffset,
+								textShadowRadius: theme.typography.textShadowRadius,
 							},
 						]}
 						numberOfLines={1}
@@ -184,17 +179,14 @@ export function SongListItem({
 					<Text
 						style={[
 							styles.artist,
-							theme.id === 'frutiger-aero' ? {
-								color: isActive ? 'rgba(50,200,255,0.9)' : 'rgba(100,180,220,0.8)',
-								fontSize: 12,
-								fontFamily: 'Rajdhani_600SemiBold',
-								textTransform: 'lowercase',
-								textShadowColor: 'rgba(0,0,0,0.4)',
-								textShadowOffset: { width: 0, height: 1 },
-								textShadowRadius: 2,
-							} : {
+							{
 								color: theme.colors.textSecondary,
 								fontSize: theme.typography.captionSize,
+								fontWeight: theme.typography.captionWeight,
+								fontFamily: theme.typography.fontFamily,
+								textShadowColor: theme.typography.textShadowColor,
+								textShadowOffset: theme.typography.textShadowOffset,
+								textShadowRadius: theme.typography.textShadowRadius,
 							},
 						]}
 						numberOfLines={1}

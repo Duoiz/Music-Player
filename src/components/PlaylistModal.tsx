@@ -33,7 +33,7 @@ export function PlaylistModal({ visible, onClose, song }: PlaylistModalProps) {
 				url: 'url' in song ? song.url : '',
 				title: song.title,
 				artist: song.artist,
-				artwork: song.thumbnail || ('artwork' in song ? song.artwork : ''),
+				artwork: song && 'thumbnail' in song ? song.thumbnail : (song as any)?.artwork || ('artwork' in song ? song.artwork : ''),
 				duration: song.duration,
 			}
 			addTrackToPlaylist(playlistId, track)
@@ -46,7 +46,7 @@ export function PlaylistModal({ visible, onClose, song }: PlaylistModalProps) {
 			<View style={styles.overlay}>
 				<GlassCard
 					style={styles.card}
-					intensity="strong"
+					intensity="heavy"
 					variant={theme.id === 'frutiger-aero' ? 'dark' : 'default'}
 				>
 					<View style={styles.header}>

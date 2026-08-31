@@ -46,17 +46,10 @@ export function EQVisualizer() {
 				style={[
 					styles.toggleButton,
 					theme.id === 'frutiger-aero' ? {
-						background: isEnabled
-							? 'linear-gradient(180deg,rgba(100,240,150,0.85),rgba(20,180,80,0.8))'
-							: 'linear-gradient(180deg,rgba(255,100,100,0.85),rgba(200,40,40,0.8))',
-						borderRadius: 7,
+						backgroundColor: isEnabled ? theme.colors.accentPrimary : 'rgba(255, 255, 255, 0.50)',
+						borderRadius: 12,
 						borderWidth: 1,
-						borderColor: 'rgba(255,255,255,0.7)',
-						shadowColor: isEnabled ? 'rgba(0,220,100,0.5)' : 'rgba(255,80,80,0.5)',
-						shadowOffset: { width: 0, height: 0 },
-						shadowOpacity: 1,
-						shadowRadius: 16,
-						elevation: 4,
+						borderColor: 'rgba(255, 255, 255, 0.70)',
 					} : {
 						backgroundColor: isEnabled
 							? theme.colors.accentPrimary + '20'
@@ -74,11 +67,9 @@ export function EQVisualizer() {
 					style={[
 						styles.toggleText,
 						theme.id === 'frutiger-aero' ? {
-							color: 'rgba(255,255,255,0.95)',
+							color: isEnabled ? '#FFFFFF' : theme.colors.textPrimary,
 							fontFamily: 'Rajdhani_700Bold',
-							textShadowColor: 'rgba(0,0,0,0.3)',
-							textShadowOffset: { width: 0, height: 1 },
-							textShadowRadius: 2,
+							fontSize: 13,
 						} : {
 							color: isEnabled
 								? theme.colors.accentPrimary
@@ -86,30 +77,30 @@ export function EQVisualizer() {
 						},
 					]}
 				>
-					EQ {isEnabled ? 'ON' : 'OFF'}
+					EQ {isEnabled ? 'ENABLED' : 'DISABLED'}
 				</Text>
 			</TouchableOpacity>
 
-			{/* Frequency Bands */}
+			{/* Frequency Bands on Dark Glass */}
 			<View
 				style={[
 					styles.bandsContainer,
 					theme.id === 'frutiger-aero' && {
-						backgroundColor: 'rgba(0,20,50,0.75)',
-						borderRadius: 8,
+						backgroundColor: 'rgba(14, 58, 88, 0.58)',
+						borderRadius: 14,
 						borderWidth: 1,
-						borderColor: 'rgba(0,120,200,0.45)',
-						paddingTop: 20,
-						paddingBottom: 16,
+						borderColor: 'rgba(255, 255, 255, 0.22)',
+						paddingTop: 18,
+						paddingBottom: 14,
 					},
-					{ opacity: isEnabled ? 1 : 0.4 },
+					{ opacity: isEnabled ? 1 : 0.5 },
 				]}
 			>
 				{/* Center line (0 dB) */}
 				<View
 					style={[
 						styles.centerLine,
-						{ backgroundColor: theme.id === 'frutiger-aero' ? 'rgba(0,200,255,0.2)' : theme.colors.divider },
+						{ backgroundColor: theme.id === 'frutiger-aero' ? 'rgba(255, 255, 255, 0.15)' : theme.colors.divider },
 					]}
 				/>
 
@@ -124,8 +115,8 @@ export function EQVisualizer() {
 								style={[
 									styles.gainText,
 									{
-										color: theme.id === 'frutiger-aero' ? 'rgba(0,180,255,0.7)' : theme.colors.textSecondary,
-										fontSize: theme.id === 'frutiger-aero' ? 9 : theme.typography.captionSize - 2,
+										color: theme.id === 'frutiger-aero' ? '#EAF7FC' : theme.colors.textSecondary,
+										fontSize: 10,
 										fontFamily: theme.id === 'frutiger-aero' ? 'Orbitron_600SemiBold' : undefined,
 									},
 								]}
@@ -136,12 +127,12 @@ export function EQVisualizer() {
 							{/* Bar container */}
 							<View style={[
 								styles.barContainer,
-								theme.id === 'frutiger-aero' && { width: 5 }
+								theme.id === 'frutiger-aero' && { width: 6 }
 							]}>
 								<LinearGradient
 									colors={
 										theme.id === 'frutiger-aero'
-											? ['#00c8ff', '#40ffd0']
+											? ['#2196F3', '#3ECB7C']
 											: isPositive
 												? (theme.colors.accentGradient as [string, string, ...string[]])
 												: ['#FF6B6B', '#EE5A5A']
@@ -154,15 +145,8 @@ export function EQVisualizer() {
 											height: `${Math.abs(band.gain / EQ_MAX_GAIN) * 50}%`,
 											bottom: isPositive ? '50%' : undefined,
 											top: isPositive ? undefined : '50%',
-											borderRadius: theme.id === 'frutiger-aero' ? 2 : 3,
+											borderRadius: 3,
 										},
-										theme.id === 'frutiger-aero' && isEnabled && {
-											shadowColor: 'rgba(0,200,255,0.6)',
-											shadowOffset: { width: 0, height: 0 },
-											shadowOpacity: 1,
-											shadowRadius: 5,
-											elevation: 3,
-										}
 									]}
 								/>
 							</View>
@@ -172,8 +156,8 @@ export function EQVisualizer() {
 								style={[
 									styles.freqLabel,
 									{
-										color: theme.id === 'frutiger-aero' ? 'rgba(0,150,220,0.5)' : theme.colors.textMuted,
-										fontSize: theme.id === 'frutiger-aero' ? 9 : theme.typography.captionSize - 2,
+										color: theme.id === 'frutiger-aero' ? '#BEE3EF' : theme.colors.textMuted,
+										fontSize: 10,
 										fontFamily: theme.id === 'frutiger-aero' ? 'Orbitron_600SemiBold' : undefined,
 									},
 								]}
@@ -192,7 +176,7 @@ export function EQVisualizer() {
 										}
 									}}
 								>
-									<Text style={[styles.adjustText, { color: theme.colors.textMuted }]}>+</Text>
+									<Text style={[styles.adjustText, { color: theme.id === 'frutiger-aero' ? '#BEE3EF' : theme.colors.textMuted }]}>+</Text>
 								</TouchableOpacity>
 								<TouchableOpacity
 									style={styles.touchDown}
@@ -203,7 +187,7 @@ export function EQVisualizer() {
 										}
 									}}
 								>
-									<Text style={[styles.adjustText, { color: theme.colors.textMuted }]}>-</Text>
+									<Text style={[styles.adjustText, { color: theme.id === 'frutiger-aero' ? '#BEE3EF' : theme.colors.textMuted }]}>-</Text>
 								</TouchableOpacity>
 							</View>
 						</View>

@@ -1,12 +1,12 @@
 import React from 'react'
-import { StyleSheet, View, ViewStyle } from 'react-native'
+import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from './ThemeProvider'
 
 interface GlassCardProps {
 	children: React.ReactNode
-	style?: ViewStyle
+	style?: StyleProp<ViewStyle>
 	intensity?: 'light' | 'medium' | 'heavy'
 	variant?: 'default' | 'dark'
 }

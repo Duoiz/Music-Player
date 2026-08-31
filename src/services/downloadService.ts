@@ -54,7 +54,7 @@ export async function downloadSong(song: Song | Track): Promise<boolean> {
 			url: result.uri, // Use the local URI
 			title: song.title,
 			artist: song.artist,
-			artwork: song.thumbnail || ('artwork' in song ? song.artwork : ''),
+			artwork: ('thumbnail' in song ? song.thumbnail : song.artwork) || '',
 			duration: song.duration,
 			localFileUri: result.uri,
 			downloadedAt: Date.now(),

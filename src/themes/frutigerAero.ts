@@ -28,10 +28,10 @@ export const frutigerAero: ThemeStyle = {
 		cardBorderWidth: 1,
 
 		// Text
-		textPrimary: 'rgba(120, 230, 255, 0.95)',
-		textSecondary: 'rgba(100, 190, 255, 0.6)',
-		textMuted: 'rgba(0, 150, 220, 0.5)',
-		textOnAccent: 'rgba(255, 255, 255, 0.95)',
+		textPrimary: '#123655',
+		textSecondary: '#3D6E8F',
+		textMuted: '#3D6E8F',
+		textOnAccent: '#FFFFFF',
 
 		// Accent
 		accentGradient: ['#00c8ff', '#40ffd0'],
@@ -102,11 +102,14 @@ export const frutigerAero: ThemeStyle = {
 	},
 	typography: {
 		fontFamily: 'Rajdhani_600SemiBold',
-		titleSize: 22,
-		titleWeight: '700',
-		bodySize: 14,
-		bodyWeight: '600',
-		captionSize: 10,
+		titleSize: 20,
+		titleWeight: '800',
+		bodySize: 13,
+		bodyWeight: '700',
+		captionSize: 11,
 		captionWeight: '600',
+		textShadowColor: 'rgba(255, 255, 255, 0.5)',
+		textShadowOffset: { width: 0, height: 1 },
+		textShadowRadius: 2,
 	},
 }

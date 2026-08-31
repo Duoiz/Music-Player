@@ -7,6 +7,7 @@ import {
 	FlatList,
 	ActivityIndicator,
 } from 'react-native'
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withSequence } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useTheme } from '../../src/components/ThemeProvider'
@@ -40,6 +41,63 @@ export default function SearchScreen() {
 	const [modalVisible, setModalVisible] = useState(false)
 	const [selectedSong, setSelectedSong] = useState<Song | null>(null)
 	const isDownloaded = useDownloadStore((s) => s.isDownloaded)
+
+	// 3D Gas Rotation Animation
+	const rotation1 = useSharedValue(0)
+	const rotation2 = useSharedValue(0)
+	const scale1 = useSharedValue(1)
+	const scale2 = useSharedValue(1)
+
+	React.useEffect(() => {
+		// Infinite slow spin
+		rotation1.value = withRepeat(
+			withTiming(360, { duration: 15000, easing: Easing.linear }),
+			-1,
+			false
+		)
+		rotation2.value = withRepeat(
+			withTiming(-360, { duration: 20000, easing: Easing.linear }),
+			-1,
+			false
+		)
+		// 3D breathing/wobble effect
+		scale1.value = withRepeat(
+			withSequence(
+				withTiming(1.3, { duration: 4000, easing: Easing.inOut(Easing.ease) }),
+				withTiming(1, { duration: 4000, easing: Easing.inOut(Easing.ease) })
+			),
+			-1,
+			true
+		)
+		scale2.value = withRepeat(
+			withSequence(
+				withTiming(1.4, { duration: 5000, easing: Easing.inOut(Easing.ease) }),
+				withTiming(1, { duration: 5000, easing: Easing.inOut(Easing.ease) })
+			),
+			-1,
+			true
+		)
+	}, [])
+
+	const animatedBlob1 = useAnimatedStyle(() => {
+		return {
+			transform: [
+				{ rotate: `${rotation1.value}deg` },
+				{ scaleX: 1.5 * scale1.value },
+				{ scaleY: scale1.value },
+			]
+		}
+	})
+
+	const animatedBlob2 = useAnimatedStyle(() => {
+		return {
+			transform: [
+				{ rotate: `${rotation2.value}deg` },
+				{ scaleX: scale2.value },
+				{ scaleY: 1.2 * scale2.value },
+			]
+		}
+	})
 
 	const handleMenuAction = useCallback((action: 'download' | 'playlist', song: Song) => {
 		if (action === 'playlist') {
@@ -104,18 +162,14 @@ export default function SearchScreen() {
 			<Text
 				style={[
 					styles.title,
-					theme.id === 'frutiger-aero' ? {
-						color: 'rgba(230,250,255,1)',
-						fontSize: 32,
-						fontFamily: 'Rajdhani_700Bold',
-						textShadowColor: 'rgba(0,0,0,0.6)',
-						textShadowOffset: { width: 0, height: 2 },
-						textShadowRadius: 6,
-						textTransform: 'lowercase',
-					} : {
+					{
 						color: theme.colors.textPrimary,
-						fontSize: 28,
-						fontWeight: '800',
+						fontSize: 32,
+						fontWeight: theme.typography.titleWeight,
+						fontFamily: theme.typography.fontFamily,
+						textShadowColor: theme.typography.textShadowColor,
+						textShadowOffset: theme.typography.textShadowOffset,
+						textShadowRadius: theme.typography.textShadowRadius,
 					},
 				]}
 			>
@@ -124,18 +178,14 @@ export default function SearchScreen() {
 			<Text
 				style={[
 					styles.subtitle,
-					theme.id === 'frutiger-aero' ? {
-						color: 'rgba(160,220,255,0.8)',
-						fontSize: 11,
-						fontFamily: 'Orbitron_600SemiBold',
-						letterSpacing: 2,
-						textShadowColor: 'rgba(0,0,0,0.5)',
-						textShadowOffset: { width: 0, height: 1 },
-						textShadowRadius: 3,
-						textTransform: 'uppercase',
-					} : {
+					{
 						color: theme.colors.textSecondary,
 						fontSize: theme.typography.bodySize,
+						fontWeight: theme.typography.bodyWeight,
+						fontFamily: theme.typography.fontFamily,
+						textShadowColor: theme.typography.textShadowColor,
+						textShadowOffset: theme.typography.textShadowOffset,
+						textShadowRadius: theme.typography.textShadowRadius,
 					},
 				]}
 			>
@@ -161,15 +211,52 @@ export default function SearchScreen() {
 
 			{/* Empty state */}
 			{!hasSearched && (
-				<GlassCard style={styles.heroCard} intensity="light" variant={theme.id === 'frutiger-aero' ? 'dark' : 'default'}>
-					<Ionicons name="headset" size={48} color={theme.id === 'frutiger-aero' ? 'rgba(0,180,255,0.7)' : theme.colors.accentPrimary} />
+				<GlassCard style={[styles.heroCard, { overflow: 'hidden' as const }]} intensity="light">
+					{/* High viscosity gas / refraction effect */}
+					{theme.id === 'frutiger-aero' && (
+						<>
+							<Animated.View style={[{ position: 'absolute', top: -60, left: -60, width: 320, height: 320 }, animatedBlob1]}>
+								<LinearGradient
+									colors={['rgba(0, 255, 200, 0.75)', 'transparent']}
+									start={{ x: 0, y: 0 }}
+									end={{ x: 1, y: 1 }}
+									style={{
+										width: '100%',
+										height: '100%',
+										borderRadius: 160,
+									}}
+								/>
+							</Animated.View>
+							<Animated.View style={[{ position: 'absolute', bottom: -120, right: -80, width: 400, height: 400 }, animatedBlob2]}>
+								<LinearGradient
+									colors={['rgba(0, 150, 255, 0.85)', 'transparent']}
+									start={{ x: 1, y: 1 }}
+									end={{ x: 0, y: 0 }}
+									style={{
+										width: '100%',
+										height: '100%',
+										borderRadius: 200,
+									}}
+								/>
+							</Animated.View>
+							{/* Glossy overlay to simulate refraction thickness */}
+							<LinearGradient
+								colors={['rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0)']}
+								start={{ x: 0, y: 0 }}
+								end={{ x: 0, y: 1 }}
+								style={StyleSheet.absoluteFillObject}
+								pointerEvents="none"
+							/>
+						</>
+					)}
+					<Ionicons name="headset" size={48} color={theme.id === 'frutiger-aero' ? 'rgba(0,120,200,0.8)' : theme.colors.accentPrimary} />
 					<Text
 						style={[
 							styles.heroTitle,
-							theme.id === 'frutiger-aero' ? {
-								color: 'rgba(120,230,255,0.95)',
-								fontFamily: 'Rajdhani_600SemiBold',
-							} : { color: theme.colors.textPrimary },
+							{ 
+								color: theme.colors.textPrimary,
+								fontWeight: '600',
+							},
 						]}
 					>
 						Ready to play
@@ -177,11 +264,10 @@ export default function SearchScreen() {
 					<Text
 						style={[
 							styles.heroSubtitle,
-							theme.id === 'frutiger-aero' ? {
-								color: 'rgba(100,190,255,0.6)',
-								fontFamily: 'Orbitron_400Regular',
-								fontSize: 10,
-							} : { color: theme.colors.textSecondary },
+							{ 
+								color: theme.colors.textSecondary,
+								fontWeight: '400',
+							},
 						]}
 					>
 						Search for your favorite songs above.{'\n'}

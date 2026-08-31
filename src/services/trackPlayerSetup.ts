@@ -9,6 +9,11 @@ import TrackPlayer, {
  */
 export async function setupTrackPlayer(): Promise<boolean> {
 	try {
+		const isRunning = await TrackPlayer.isServiceRunning()
+		if (isRunning) {
+			return true
+		}
+
 		await TrackPlayer.setupPlayer({
 			// Reduce buffer for faster start
 			minBuffer: 15,
@@ -41,7 +46,13 @@ export async function setupTrackPlayer(): Promise<boolean> {
 		})
 
 		return true
-	} catch (error) {
+	} catch (error: any) {
+		if (
+			error?.message?.includes('already been initialized') ||
+			error?.code === 'player_already_initialized'
+		) {
+			return true
+		}
 		console.error('Error setting up TrackPlayer:', error)
 		return false
 	}

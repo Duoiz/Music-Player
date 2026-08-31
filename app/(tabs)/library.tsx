@@ -113,10 +113,10 @@ export default function LibraryScreen() {
 	const renderEmpty = (title: string, subtitle: string, icon: any) => (
 		<GlassCard style={styles.emptyCard} intensity="light" variant={theme.id === 'frutiger-aero' ? 'dark' : 'default'}>
 			<Ionicons name={icon} size={48} color={theme.id === 'frutiger-aero' ? 'rgba(0,180,255,0.7)' : theme.colors.textMuted} />
-			<Text style={[styles.emptyTitle, theme.id === 'frutiger-aero' ? { color: 'rgba(255,255,255,1)', fontFamily: 'Rajdhani_700Bold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width:0, height:1}, textShadowRadius:3 } : { color: theme.colors.textPrimary }]}>
+			<Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, fontFamily: theme.typography.fontFamily, textShadowColor: theme.typography.textShadowColor, textShadowOffset: theme.typography.textShadowOffset, textShadowRadius: theme.typography.textShadowRadius }]}>
 				{title}
 			</Text>
-			<Text style={[styles.emptySubtitle, theme.id === 'frutiger-aero' ? { color: 'rgba(100,190,255,0.6)', fontFamily: 'Orbitron_400Regular', fontSize: 10 } : { color: theme.colors.textSecondary }]}>
+			<Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary, fontFamily: theme.typography.fontFamily, textShadowColor: theme.typography.textShadowColor, textShadowOffset: theme.typography.textShadowOffset, textShadowRadius: theme.typography.textShadowRadius }]}>
 				{subtitle}
 			</Text>
 		</GlassCard>
@@ -125,7 +125,7 @@ export default function LibraryScreen() {
 	const renderQueue = () => (
 		<>
 			<View style={styles.sectionHeader}>
-				<Text style={[styles.sectionTitle, theme.id === 'frutiger-aero' ? { color: '#fff', fontFamily: 'Rajdhani_700Bold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 0, height: 2}, textShadowRadius: 4 } : { color: theme.colors.textPrimary }]}>Current Queue</Text>
+				<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontFamily: theme.typography.fontFamily, textShadowColor: theme.typography.textShadowColor, textShadowOffset: theme.typography.textShadowOffset, textShadowRadius: theme.typography.textShadowRadius }]}>Current Queue</Text>
 				{queue.length > 0 && (
 					<TouchableOpacity onPress={clearQueue}>
 						<Text style={{ color: theme.colors.accentPrimary, fontWeight: '600' }}>Clear</Text>
@@ -150,7 +150,7 @@ export default function LibraryScreen() {
 	const renderDownloads = () => (
 		<>
 			<View style={styles.sectionHeader}>
-				<Text style={[styles.sectionTitle, theme.id === 'frutiger-aero' ? { color: '#fff', fontFamily: 'Rajdhani_700Bold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 0, height: 2}, textShadowRadius: 4 } : { color: theme.colors.textPrimary }]}>Offline Songs</Text>
+				<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontFamily: theme.typography.fontFamily, textShadowColor: theme.typography.textShadowColor, textShadowOffset: theme.typography.textShadowOffset, textShadowRadius: theme.typography.textShadowRadius }]}>Offline Songs</Text>
 			</View>
 			{downloadedTracks.length === 0 ? renderEmpty('No downloads', 'Download songs to listen offline.', 'cloud-offline') : (
 				downloadedTracks.map((track, index) => {
@@ -204,7 +204,7 @@ export default function LibraryScreen() {
 		return (
 			<>
 				<View style={styles.sectionHeader}>
-					<Text style={[styles.sectionTitle, theme.id === 'frutiger-aero' ? { color: '#fff', fontFamily: 'Rajdhani_700Bold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 0, height: 2}, textShadowRadius: 4 } : { color: theme.colors.textPrimary }]}>Your Playlists</Text>
+					<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, fontFamily: theme.typography.fontFamily, textShadowColor: theme.typography.textShadowColor, textShadowOffset: theme.typography.textShadowOffset, textShadowRadius: theme.typography.textShadowRadius }]}>Your Playlists</Text>
 					<TouchableOpacity onPress={() => setModalVisible(true)}>
 						<Text style={{ color: theme.colors.accentPrimary, fontWeight: '600' }}>New</Text>
 					</TouchableOpacity>
