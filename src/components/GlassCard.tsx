@@ -57,6 +57,7 @@ export function GlassCard({ children, style, intensity = 'medium', variant = 'de
 								padding: theme.metrics.cardPadding,
 								borderWidth: theme.colors.cardBorderWidth,
 								borderColor: theme.colors.cardBorderColor,
+								overflow: 'hidden',
 							},
 						]}
 					>

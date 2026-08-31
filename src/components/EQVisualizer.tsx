@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react'
+import { Ionicons } from '@expo/vector-icons'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from './ThemeProvider'
@@ -245,7 +246,12 @@ export function EQVisualizer() {
 							]}
 							onPress={() => handlePresetSelect(preset.id)}
 						>
-							<Text style={styles.presetIcon}>{preset.icon}</Text>
+							<Ionicons 
+								name={preset.icon as any} 
+								size={14} 
+								color={activePreset === preset.id ? theme.colors.accentPrimary : theme.colors.textSecondary} 
+								style={styles.presetIcon} 
+							/>
 							<Text
 								style={[
 									styles.presetName,

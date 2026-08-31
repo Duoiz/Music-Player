@@ -116,10 +116,13 @@ export default function PlayerScreen() {
 						style={[
 							styles.headerTitle,
 							theme.id === 'frutiger-aero' ? {
-								color: 'rgba(100,200,255,0.7)',
+								color: 'rgba(200,230,255,0.9)',
 								fontFamily: 'Orbitron_600SemiBold',
-								fontSize: 10,
+								fontSize: 11,
 								letterSpacing: 2,
+								textShadowColor: 'rgba(0,0,0,0.5)',
+								textShadowOffset: { width: 0, height: 1 },
+								textShadowRadius: 2,
 							} : {
 								color: theme.colors.textPrimary,
 								fontSize: theme.typography.captionSize,
@@ -168,13 +171,13 @@ export default function PlayerScreen() {
 							style={[
 								styles.songTitle,
 								theme.id === 'frutiger-aero' ? {
-									color: 'rgba(230,250,255,0.95)',
-									fontSize: 24,
+									color: 'rgba(255,255,255,1)',
+									fontSize: 26,
 									fontFamily: 'Rajdhani_700Bold',
 									textTransform: 'lowercase',
-									textShadowColor: 'rgba(0,180,255,0.8)',
-									textShadowOffset: { width: 0, height: 0 },
-									textShadowRadius: 10,
+									textShadowColor: 'rgba(0,0,0,0.7)',
+									textShadowOffset: { width: 0, height: 2 },
+									textShadowRadius: 4,
 								} : {
 									color: theme.colors.textPrimary,
 									fontSize: 22,
@@ -189,10 +192,13 @@ export default function PlayerScreen() {
 							style={[
 								styles.songArtist,
 								theme.id === 'frutiger-aero' ? {
-									color: 'rgba(100,190,255,0.8)',
-									fontSize: 14,
-									fontFamily: 'Rajdhani_500Medium',
+									color: 'rgba(200,230,255,0.9)',
+									fontSize: 16,
+									fontFamily: 'Rajdhani_600SemiBold',
 									textTransform: 'lowercase',
+									textShadowColor: 'rgba(0,0,0,0.6)',
+									textShadowOffset: { width: 0, height: 1 },
+									textShadowRadius: 3,
 								} : {
 									color: theme.colors.textSecondary,
 									fontSize: theme.typography.bodySize,
@@ -427,6 +433,7 @@ const styles = StyleSheet.create({
 		borderRadius: 36,
 		justifyContent: 'center',
 		alignItems: 'center',
+		overflow: 'hidden',
 	},
 	playIcon: {
 		fontSize: 32,

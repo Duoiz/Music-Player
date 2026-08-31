@@ -17,8 +17,8 @@ export const frutigerAero: ThemeStyle = {
 	useInnerShadows: false,
 	useTextures: false,
 	colors: {
-		// Background (Dark radial gradient)
-		backgroundGradient: ['#a8e6ff', '#5bc8f5', '#1a8fc1', '#0a4f80'],
+		// Background (Smoother, mid-tone radial gradient)
+		backgroundGradient: ['#6bc5e8', '#40a9d4', '#1f85b3', '#11658f'],
 		backgroundGradientStart: { x: 0.3, y: 0.2 },
 		backgroundGradientEnd: { x: 1, y: 1 },
 
@@ -44,8 +44,8 @@ export const frutigerAero: ThemeStyle = {
 		controlIcon: 'rgba(0, 40, 100, 0.9)',
 
 		// Progress
-		progressTrack: 'rgba(0, 40, 80, 0.55)',
-		progressFillGradient: ['#0090ff', '#00ffc8'],
+		progressTrack: 'rgba(0, 40, 80, 0.35)',
+		progressFillGradient: ['#33b5e5', '#00ffc8'],
 
 		// Tab Bar
 		tabBarBackground: 'rgba(160, 225, 255, 0.75)',

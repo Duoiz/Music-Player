@@ -1,8 +1,7 @@
 import React from 'react'
 import { Ionicons } from '@expo/vector-icons'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, Text, TouchableOpacity, View, Modal, Pressable } from 'react-native'
 import { Image } from 'expo-image'
-import { MenuView } from '@react-native-menu/menu'
 import { useTheme } from './ThemeProvider'
 import { useDownloadStore } from '../stores/downloadStore'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated'
@@ -37,6 +36,7 @@ export function SongListItem({
 	const isDownloading = downloadProgress !== undefined
 
 	const pulseOpacity = useSharedValue(1)
+	const [menuVisible, setMenuVisible] = React.useState(false)
 
 	React.useEffect(() => {
 		if (theme.id === 'frutiger-aero' && isActive) {
@@ -81,7 +81,9 @@ export function SongListItem({
 			{index !== undefined && (
 				<View style={styles.indexContainer}>
 					{isActive && theme.id === 'frutiger-aero' ? (
-						<Animated.Text style={[{ color: 'rgba(0,220,255,0.9)', fontSize: 14 }, pulseStyle]}>♫</Animated.Text>
+						<Animated.View style={pulseStyle}>
+							<Ionicons name="musical-notes" size={14} color="rgba(0,220,255,0.9)" />
+						</Animated.View>
 					) : (
 						<Text
 							style={[
@@ -159,14 +161,14 @@ export function SongListItem({
 						style={[
 							styles.title,
 							theme.id === 'frutiger-aero' ? {
-								color: isActive ? 'rgba(180,240,255,0.95)' : 'rgba(120,200,240,0.75)',
-								fontSize: 13,
-								fontFamily: 'Rajdhani_600SemiBold',
+								color: isActive ? 'rgba(180,240,255,0.95)' : 'rgba(180,220,240,0.9)',
+								fontSize: 14,
+								fontFamily: 'Rajdhani_700Bold',
 								textTransform: 'lowercase',
 								letterSpacing: 0.3,
-								textShadowColor: isActive ? 'rgba(0,200,255,0.5)' : undefined,
-								textShadowOffset: isActive ? { width: 0, height: 0 } : undefined,
-								textShadowRadius: isActive ? 10 : undefined,
+								textShadowColor: isActive ? 'rgba(0,200,255,0.8)' : 'rgba(0,0,0,0.5)',
+								textShadowOffset: isActive ? { width: 0, height: 0 } : { width: 0, height: 1 },
+								textShadowRadius: isActive ? 12 : 2,
 							} : {
 								color: isActive
 									? theme.colors.accentPrimary
@@ -183,10 +185,13 @@ export function SongListItem({
 						style={[
 							styles.artist,
 							theme.id === 'frutiger-aero' ? {
-								color: isActive ? 'rgba(0,200,255,0.8)' : 'rgba(0,150,200,0.5)',
-								fontSize: 11,
-								fontFamily: 'Rajdhani_500Medium',
+								color: isActive ? 'rgba(50,200,255,0.9)' : 'rgba(100,180,220,0.8)',
+								fontSize: 12,
+								fontFamily: 'Rajdhani_600SemiBold',
 								textTransform: 'lowercase',
+								textShadowColor: 'rgba(0,0,0,0.4)',
+								textShadowOffset: { width: 0, height: 1 },
+								textShadowRadius: 2,
 							} : {
 								color: theme.colors.textSecondary,
 								fontSize: theme.typography.captionSize,
@@ -244,32 +249,67 @@ export function SongListItem({
 
 				{/* Action Menu (hide while downloading) */}
 				{!isDownloading && (
-					<MenuView
-						title="Options"
-						onPressAction={({ nativeEvent }) => {
-							if (onMenuAction) {
-								onMenuAction(nativeEvent.event as 'download' | 'playlist', song)
-							}
-						}}
-						actions={[
-							{
-								id: 'add_playlist',
-								title: 'Add to Playlist',
-							},
-							{
-								id: 'download',
-								title: isDownloaded ? 'Remove Download' : 'Download for Offline',
-							}
-						]}
-					>
-						<TouchableOpacity style={{ padding: 8, marginLeft: 4 }}>
+					<>
+						<TouchableOpacity 
+							style={{ padding: 8, marginLeft: 4 }}
+							onPress={() => setMenuVisible(true)}
+						>
 							<Ionicons
 								name="ellipsis-vertical"
 								size={16}
 								color={theme.id === 'frutiger-aero' ? 'rgba(0,200,255,0.7)' : theme.colors.textMuted}
 							/>
 						</TouchableOpacity>
-					</MenuView>
+
+						<Modal
+							visible={menuVisible}
+							transparent={true}
+							animationType="fade"
+							onRequestClose={() => setMenuVisible(false)}
+						>
+							<Pressable 
+								style={styles.modalOverlay}
+								onPress={() => setMenuVisible(false)}
+							>
+								<View style={[
+									styles.modalContent,
+									theme.id === 'frutiger-aero' ? {
+										backgroundColor: 'rgba(0,30,70,0.95)',
+										borderColor: 'rgba(0,180,255,0.4)',
+										borderWidth: 1,
+									} : {
+										backgroundColor: theme.colors.controlBackground,
+									}
+								]}>
+									<TouchableOpacity 
+										style={styles.modalOption}
+										onPress={() => {
+											setMenuVisible(false)
+											if (onMenuAction) onMenuAction('playlist', song)
+										}}
+									>
+										<Ionicons name="list" size={20} color={theme.id === 'frutiger-aero' ? 'rgba(180,240,255,0.95)' : theme.colors.textPrimary} />
+										<Text style={[styles.modalOptionText, theme.id === 'frutiger-aero' ? { color: 'rgba(180,240,255,0.95)' } : { color: theme.colors.textPrimary }]}>
+											Add to Playlist
+										</Text>
+									</TouchableOpacity>
+									
+									<TouchableOpacity 
+										style={styles.modalOption}
+										onPress={() => {
+											setMenuVisible(false)
+											if (onMenuAction) onMenuAction('download', song)
+										}}
+									>
+										<Ionicons name={isDownloaded ? "trash-outline" : "download-outline"} size={20} color={theme.id === 'frutiger-aero' ? 'rgba(180,240,255,0.95)' : theme.colors.textPrimary} />
+										<Text style={[styles.modalOptionText, theme.id === 'frutiger-aero' ? { color: 'rgba(180,240,255,0.95)' } : { color: theme.colors.textPrimary }]}>
+											{isDownloaded ? 'Remove Download' : 'Download for Offline'}
+										</Text>
+									</TouchableOpacity>
+								</View>
+							</Pressable>
+						</Modal>
+					</>
 				)}
 			</View>
 		</TouchableOpacity>
@@ -334,6 +374,32 @@ const styles = StyleSheet.create({
 	duration: {
 		fontWeight: '500',
 		marginLeft: 8,
+	},
+	modalOverlay: {
+		flex: 1,
+		backgroundColor: 'rgba(0, 0, 0, 0.5)',
+		justifyContent: 'center',
+		alignItems: 'center',
+	},
+	modalContent: {
+		width: '80%',
+		borderRadius: 12,
+		padding: 8,
+		elevation: 5,
+		shadowColor: '#000',
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.25,
+		shadowRadius: 3.84,
+	},
+	modalOption: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		padding: 16,
+		gap: 12,
+	},
+	modalOptionText: {
+		fontSize: 16,
+		fontWeight: '500',
 	},
 })
 

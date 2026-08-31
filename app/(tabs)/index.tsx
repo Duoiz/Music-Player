@@ -105,12 +105,12 @@ export default function SearchScreen() {
 				style={[
 					styles.title,
 					theme.id === 'frutiger-aero' ? {
-						color: 'rgba(120,230,255,0.95)',
-						fontSize: 28,
+						color: 'rgba(230,250,255,1)',
+						fontSize: 32,
 						fontFamily: 'Rajdhani_700Bold',
-						textShadowColor: 'rgba(0,200,255,0.7)',
-						textShadowOffset: { width: 0, height: 0 },
-						textShadowRadius: 14,
+						textShadowColor: 'rgba(0,0,0,0.6)',
+						textShadowOffset: { width: 0, height: 2 },
+						textShadowRadius: 6,
 						textTransform: 'lowercase',
 					} : {
 						color: theme.colors.textPrimary,
@@ -125,10 +125,13 @@ export default function SearchScreen() {
 				style={[
 					styles.subtitle,
 					theme.id === 'frutiger-aero' ? {
-						color: 'rgba(100,190,255,0.6)',
-						fontSize: 10,
+						color: 'rgba(160,220,255,0.8)',
+						fontSize: 11,
 						fontFamily: 'Orbitron_600SemiBold',
 						letterSpacing: 2,
+						textShadowColor: 'rgba(0,0,0,0.5)',
+						textShadowOffset: { width: 0, height: 1 },
+						textShadowRadius: 3,
 						textTransform: 'uppercase',
 					} : {
 						color: theme.colors.textSecondary,

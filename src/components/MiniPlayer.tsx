@@ -112,14 +112,14 @@ export function MiniPlayer() {
 						style={[
 							styles.title,
 							theme.id === 'frutiger-aero' ? {
-								color: 'rgba(180,240,255,0.95)',
-								fontSize: 13,
+								color: 'rgba(200,245,255,1)',
+								fontSize: 14,
 								fontFamily: 'Rajdhani_700Bold',
 								textTransform: 'lowercase',
 								letterSpacing: 0.3,
-								textShadowColor: 'rgba(0,200,255,0.5)',
-								textShadowOffset: { width: 0, height: 0 },
-								textShadowRadius: 10,
+								textShadowColor: 'rgba(0,0,0,0.6)',
+								textShadowOffset: { width: 0, height: 1 },
+								textShadowRadius: 3,
 							} : {
 								color: theme.colors.textPrimary,
 								fontSize: theme.typography.bodySize - 1,
@@ -133,10 +133,13 @@ export function MiniPlayer() {
 						style={[
 							styles.artist,
 							theme.id === 'frutiger-aero' ? {
-								color: 'rgba(120,200,240,0.75)',
-								fontSize: 11,
+								color: 'rgba(150,220,250,0.9)',
+								fontSize: 12,
 								fontFamily: 'Rajdhani_600SemiBold',
 								textTransform: 'lowercase',
+								textShadowColor: 'rgba(0,0,0,0.5)',
+								textShadowOffset: { width: 0, height: 1 },
+								textShadowRadius: 2,
 							} : {
 								color: theme.colors.textSecondary,
 								fontSize: theme.typography.captionSize,
@@ -169,16 +172,16 @@ export function MiniPlayer() {
 							elevation: 4,
 						}}
 					>
-						<Text style={{
-							color: 'rgba(255,255,255,0.95)',
-							fontFamily: 'Rajdhani_700Bold',
-							fontSize: 12,
-							textShadowColor: 'rgba(0,0,0,0.3)',
-							textShadowOffset: { width: 0, height: 1 },
-							textShadowRadius: 2,
-						}}>
-							{isPlaying ? '⏸' : '▶'}
-						</Text>
+						<Ionicons 
+							name={isPlaying ? 'pause' : 'play'} 
+							size={16} 
+							color="rgba(255,255,255,0.95)" 
+							style={{
+								textShadowColor: 'rgba(0,0,0,0.3)',
+								textShadowOffset: { width: 0, height: 1 },
+								textShadowRadius: 2,
+							}}
+						/>
 					</TouchableOpacity>
 				) : (
 					<TouchableOpacity
