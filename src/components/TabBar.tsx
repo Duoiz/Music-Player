@@ -38,9 +38,13 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 	// Sync shared value with navigation state
 	useEffect(() => {
 		if (tabWidth > 0) {
-			translateX.value = withSpring(state.index * tabWidth, { damping: 25, stiffness: 350, mass: 0.8 })
+			const springConfig = theme.id === 'liquid-glass'
+				? { damping: 20, stiffness: 150, mass: 1 } // more fluid and smooth
+				: { damping: 25, stiffness: 350, mass: 0.8 }
+				
+			translateX.value = withSpring(state.index * tabWidth, springConfig)
 		}
-	}, [state.index, tabWidth])
+	}, [state.index, tabWidth, theme.id])
 
 	const navigateToIndex = (index: number) => {
 		const clampedIndex = Math.max(0, Math.min(index, state.routes.length - 1))
@@ -99,6 +103,8 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 							styles.scopeInner, 
 							theme.id === 'frutiger-aero' 
 								? { backgroundColor: 'rgba(255,255,255,0.5)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)' }
+								: theme.id === 'liquid-glass'
+								? { backgroundColor: 'rgba(255,255,255,0.25)', borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.5)' }
 								: { backgroundColor: theme.colors.accentPrimary + '30' }
 						]} />
 					</Animated.View>

@@ -8,7 +8,7 @@ app = modal.App("music-player-backend")
 # Define the environment container and install dependencies
 image = (
     modal.Image.debian_slim()
-    .pip_install("fastapi[standard]", "yt-dlp", "youtube-search-python", "pydantic", "httpx==0.27.2")
+    .pip_install("fastapi[standard]", "yt-dlp>=2024.08.01", "youtube-search-python", "pydantic", "httpx==0.27.2")
 )
 
 web_app = FastAPI()
@@ -59,8 +59,10 @@ def search(q: str):
     
         ydl_opts = {
             'quiet': True,
-            'extract_flat': True, # extract_flat=True gets fast search results without fully resolving every video
+            'extract_flat': True,
             'no_warnings': True,
+            'socket_timeout': 15,
+            'extractor_args': {'youtube': {'client': ['android', 'web']}},
         }
         
         songs = []
@@ -112,12 +114,13 @@ def get_stream(video_id: str):
 
     url = f"https://www.youtube.com/watch?v={video_id}"
     
-    # yt-dlp native configuration
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
         'no_warnings': True,
         'extract_flat': False,
+        'socket_timeout': 15,
+        'extractor_args': {'youtube': {'client': ['android', 'web']}},
     }
     
     try:

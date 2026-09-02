@@ -1,6 +1,7 @@
 import React from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated'
@@ -50,25 +51,9 @@ export function MiniPlayer() {
 
 	const progress = duration > 0 ? (position / duration) * 100 : 0
 
-	return (
-		<TouchableOpacity
-			style={[
-				styles.container,
-				theme.id === 'frutiger-aero' ? {
-					backgroundColor: 'rgba(0,30,70,0.85)',
-					borderTopWidth: 1,
-					borderTopColor: 'rgba(0,180,255,0.4)',
-					borderBottomWidth: 1,
-					borderBottomColor: 'rgba(0,180,255,0.4)',
-				} : {
-					backgroundColor: theme.colors.tabBarBackground,
-					borderTopWidth: 0.5,
-					borderTopColor: theme.colors.divider,
-				},
-			]}
-			onPress={() => router.push('/player')}
-			activeOpacity={0.9}
-		>
+
+	const content = (
+		<>
 			{/* Progress bar (thin line at the top) */}
 			<View style={[styles.progressBar, { backgroundColor: theme.colors.progressTrack }]}>
 				<LinearGradient
@@ -194,6 +179,41 @@ export function MiniPlayer() {
 					</TouchableOpacity>
 				)}
 			</View>
+		</>
+	)
+
+	return (
+		<TouchableOpacity
+			style={[
+				styles.container,
+				theme.id === 'frutiger-aero' ? {
+					backgroundColor: 'rgba(0,30,70,0.85)',
+					borderTopWidth: 1,
+					borderTopColor: 'rgba(0,180,255,0.4)',
+					borderBottomWidth: 1,
+					borderBottomColor: 'rgba(0,180,255,0.4)',
+				} : !theme.useBlur ? {
+					backgroundColor: theme.colors.tabBarBackground,
+					borderTopWidth: 0.5,
+					borderTopColor: theme.colors.divider,
+				} : {
+					borderTopWidth: 0.5,
+					borderTopColor: theme.colors.divider,
+					overflow: 'hidden',
+				},
+			]}
+			onPress={() => router.push('/player')}
+			activeOpacity={0.9}
+		>
+			{theme.useBlur ? (
+				<BlurView intensity={theme.metrics.blurIntensity} tint={theme.id === 'liquid-glass' ? 'light' : 'default'}>
+					<View style={{ backgroundColor: theme.colors.tabBarBackground }}>
+						{content}
+					</View>
+				</BlurView>
+			) : (
+				content
+			)}
 		</TouchableOpacity>
 	)
 }

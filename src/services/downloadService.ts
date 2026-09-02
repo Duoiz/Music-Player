@@ -1,4 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy'
+import { Alert } from 'react-native'
 import { getStreamUrl } from './api'
 import { useDownloadStore } from '../stores/downloadStore'
 import type { Song, Track } from '../types'
@@ -35,7 +36,11 @@ export async function downloadSong(song: Song | Track): Promise<boolean> {
 		const downloadResumable = FileSystem.createDownloadResumable(
 			streamInfo.streamUrl,
 			fileUri,
-			{},
+			{
+				headers: {
+					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+				}
+			},
 			(downloadProgress) => {
 				const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite
 				store.setDownloadProgress(songId, progress)
@@ -45,7 +50,7 @@ export async function downloadSong(song: Song | Track): Promise<boolean> {
 		const result = await downloadResumable.downloadAsync()
 		
 		if (!result || result.status !== 200) {
-			throw new Error('Download failed')
+			throw new Error(`Download failed with status ${result?.status}. URL was: ${streamInfo.streamUrl.substring(0, 50)}...`)
 		}
 
 		// 4. Save to store
@@ -62,8 +67,9 @@ export async function downloadSong(song: Song | Track): Promise<boolean> {
 
 		store.removeActiveDownload(songId)
 		return true
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Error downloading song:', error)
+		Alert.alert('Download Failed', error?.message || 'Unknown error')
 		store.removeActiveDownload(songId)
 		return false
 	}

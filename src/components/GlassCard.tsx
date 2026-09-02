@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { LinearGradient } from 'expo-linear-gradient'
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing } from 'react-native-reanimated'
 import { useTheme } from './ThemeProvider'
 
 interface GlassCardProps {
@@ -36,6 +37,26 @@ export function GlassCard({ children, style, intensity = 'medium', variant = 'de
 		shadowRadius: shadow.radius,
 		elevation: shadow.elevation,
 	}
+
+	// Fluid animation for liquid-glass theme reflection
+	const fluidOpacity = useSharedValue(0.6)
+	
+	useEffect(() => {
+		if (theme.id === 'liquid-glass') {
+			fluidOpacity.value = withRepeat(
+				withSequence(
+					withTiming(1, { duration: 4000, easing: Easing.inOut(Easing.ease) }),
+					withTiming(0.6, { duration: 4000, easing: Easing.inOut(Easing.ease) })
+				),
+				-1,
+				true
+			)
+		}
+	}, [theme.id])
+
+	const fluidStyle = useAnimatedStyle(() => ({
+		opacity: fluidOpacity.value,
+	}))
 
 	// For themes that use blur (glass effect)
 	if (theme.useBlur) {
@@ -85,6 +106,17 @@ export function GlassCard({ children, style, intensity = 'medium', variant = 'de
 								]}
 								pointerEvents="none"
 							/>
+						)}
+						{/* Liquid Glass Fluid Reflection */}
+						{theme.id === 'liquid-glass' && (
+							<Animated.View style={[StyleSheet.absoluteFillObject, fluidStyle]} pointerEvents="none">
+								<LinearGradient
+									colors={['rgba(255,255,255,0.5)', 'transparent', 'rgba(255,255,255,0.15)']}
+									start={{ x: 0, y: 0 }}
+									end={{ x: 1, y: 1 }}
+									style={StyleSheet.absoluteFillObject}
+								/>
+							</Animated.View>
 						)}
 						{children}
 					</LinearGradient>
