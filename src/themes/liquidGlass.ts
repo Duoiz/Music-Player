@@ -23,10 +23,10 @@ export const liquidGlass: ThemeStyle = {
 		backgroundGradientStart: { x: 0, y: 0 },
 		backgroundGradientEnd: { x: 0.5, y: 1 },
 
-		// Glass Card — extremely transparent
-		cardGradient: ['rgba(255, 255, 255, 0.45)', 'rgba(240, 245, 255, 0.35)'],
-		cardBorderColor: 'rgba(255, 255, 255, 0.6)',
-		cardBorderWidth: 0.5,
+		// Glass Card — extremely transparent for true frosted look
+		cardGradient: ['rgba(255, 255, 255, 0.25)', 'rgba(240, 245, 255, 0.15)'],
+		cardBorderColor: 'rgba(255, 255, 255, 0.75)',
+		cardBorderWidth: 1,
 
 		// Text
 		textPrimary: '#1C1C1E',
@@ -34,72 +34,72 @@ export const liquidGlass: ThemeStyle = {
 		textMuted: '#AEAEB2',
 		textOnAccent: '#FFFFFF',
 
-		// Accent — soft blue
+		// Accent — soft blue, slightly desaturated and glowing
 		accentGradient: ['#007AFF', '#5AC8FA'],
 		accentPrimary: '#007AFF',
 		accentSecondary: '#5AC8FA',
 
 		// Controls
-		controlBackground: 'rgba(255, 255, 255, 0.35)',
-		controlBackgroundActive: 'rgba(255, 255, 255, 0.55)',
+		controlBackground: 'rgba(255, 255, 255, 0.45)',
+		controlBackgroundActive: 'rgba(255, 255, 255, 0.65)',
 		controlIcon: '#1C1C1E',
 
 		// Progress
-		progressTrack: 'rgba(0, 0, 0, 0.06)',
+		progressTrack: 'rgba(0, 0, 0, 0.04)',
 		progressFillGradient: ['#007AFF', '#5AC8FA'],
 
-		// Tab Bar
-		tabBarBackground: 'rgba(255, 255, 255, 0.4)',
+		// Tab Bar - highly transparent for fluid bottom
+		tabBarBackground: 'rgba(255, 255, 255, 0.2)',
 		tabBarActive: '#007AFF',
 		tabBarInactive: '#AEAEB2',
 
 		// Misc
-		shadowColor: 'rgba(0, 0, 0, 0.08)',
+		shadowColor: 'rgba(0, 0, 0, 0.05)',
 		divider: 'rgba(0, 0, 0, 0.04)',
-		overlay: 'rgba(0, 0, 0, 0.15)',
+		overlay: 'rgba(0, 0, 0, 0.1)',
 	},
 	metrics: {
-		borderRadiusLarge: 28,
-		borderRadiusMedium: 18,
-		borderRadiusSmall: 10,
-		blurIntensity: 95,
-		cardPadding: 22,
+		borderRadiusLarge: 32,
+		borderRadiusMedium: 20,
+		borderRadiusSmall: 12,
+		blurIntensity: 100, // Maximum blur for frosted glass
+		cardPadding: 24,
 		shadowLight: {
-			color: 'rgba(0, 0, 0, 0.05)',
-			offset: { width: 0, height: 1 },
-			opacity: 0.05,
-			radius: 3,
-			elevation: 1,
+			color: 'rgba(0, 0, 0, 0.03)',
+			offset: { width: 0, height: 2 },
+			opacity: 1,
+			radius: 8,
+			elevation: 2,
 		},
 		shadowMedium: {
-			color: 'rgba(0, 0, 0, 0.08)',
-			offset: { width: 0, height: 3 },
-			opacity: 0.08,
-			radius: 6,
-			elevation: 3,
+			color: 'rgba(0, 0, 0, 0.05)',
+			offset: { width: 0, height: 4 },
+			opacity: 1,
+			radius: 12,
+			elevation: 4,
 		},
 		shadowHeavy: {
-			color: 'rgba(0, 0, 0, 0.12)',
+			color: 'rgba(0, 0, 0, 0.08)',
 			offset: { width: 0, height: 8 },
-			opacity: 0.12,
-			radius: 16,
+			opacity: 1,
+			radius: 20,
 			elevation: 8,
 		},
 		shadowAccent: {
-			color: 'rgba(0, 122, 255, 0.25)',
+			color: 'rgba(0, 122, 255, 0.15)',
 			offset: { width: 0, height: 4 },
-			opacity: 0.25,
-			radius: 10,
-			elevation: 5,
+			opacity: 1,
+			radius: 12,
+			elevation: 4,
 		},
 	},
 	typography: {
-		titleSize: 17,
+		titleSize: 18,
 		titleWeight: '600',
 		bodySize: 15,
 		bodyWeight: '400',
 		captionSize: 13,
 		captionWeight: '400',
-		fontFamily: undefined, // System default (SF Pro on iOS)
+		fontFamily: undefined,
 	},
 }

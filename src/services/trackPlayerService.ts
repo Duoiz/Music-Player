@@ -37,8 +37,8 @@ export async function PlaybackService() {
 		} else if (event.permanent) {
 			await TrackPlayer.stop()
 		} else {
-			// Volume was ducked, let TrackPlayer handle it
-			await TrackPlayer.setVolume(event.ducking ? 0.3 : 1.0)
+			// Volume was ducked, let TrackPlayer handle it internally
+			// if it doesn't, we'd normally check event.ducking, but it's deprecated/removed in some RNTP versions
 		}
 	})
 }

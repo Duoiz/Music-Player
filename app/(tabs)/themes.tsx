@@ -75,18 +75,14 @@ export default function ThemesScreen() {
 					<Text
 						style={[
 							styles.title,
-							theme.id === 'frutiger-aero' ? {
-								color: 'rgba(120,230,255,0.95)',
-								fontSize: 28,
-								fontFamily: 'Rajdhani_700Bold',
-								textShadowColor: 'rgba(0,200,255,0.7)',
-								textShadowOffset: { width: 0, height: 0 },
-								textShadowRadius: 14,
-								textTransform: 'lowercase',
-							} : {
+							{
 								color: theme.colors.textPrimary,
 								fontSize: 28,
-								fontWeight: '800',
+								fontWeight: theme.typography.titleWeight,
+								fontFamily: theme.typography.fontFamily,
+								textShadowColor: theme.typography.textShadowColor,
+								textShadowOffset: theme.typography.textShadowOffset,
+								textShadowRadius: theme.typography.textShadowRadius,
 							},
 						]}
 					>
@@ -108,15 +104,13 @@ export default function ThemesScreen() {
 					<Text
 						style={[
 							styles.sectionTitle,
-							theme.id === 'frutiger-aero' ? {
-								color: 'rgba(100,190,255,0.6)',
-								fontSize: 10,
-								fontFamily: 'Orbitron_600SemiBold',
-								letterSpacing: 2,
-								textTransform: 'uppercase',
-							} : {
+							{
 								color: theme.colors.textPrimary,
 								fontWeight: theme.typography.titleWeight,
+								fontFamily: theme.typography.fontFamily,
+								textShadowColor: theme.typography.textShadowColor,
+								textShadowOffset: theme.typography.textShadowOffset,
+								textShadowRadius: theme.typography.textShadowRadius,
 							},
 						]}
 					>
@@ -139,15 +133,13 @@ export default function ThemesScreen() {
 						<Text
 							style={[
 								styles.sectionTitle,
-								theme.id === 'frutiger-aero' ? {
-									color: 'rgba(100,190,255,0.6)',
-									fontSize: 10,
-									fontFamily: 'Orbitron_600SemiBold',
-									letterSpacing: 2,
-									textTransform: 'uppercase',
-								} : {
+								{
 									color: theme.colors.textPrimary,
 									fontWeight: theme.typography.titleWeight,
+									fontFamily: theme.typography.fontFamily,
+									textShadowColor: theme.typography.textShadowColor,
+									textShadowOffset: theme.typography.textShadowOffset,
+									textShadowRadius: theme.typography.textShadowRadius,
 								},
 							]}
 						>

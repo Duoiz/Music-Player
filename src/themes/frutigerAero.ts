@@ -17,8 +17,8 @@ export const frutigerAero: ThemeStyle = {
 	useInnerShadows: false,
 	useTextures: false,
 	colors: {
-		// Background (Dark radial gradient)
-		backgroundGradient: ['#a8e6ff', '#5bc8f5', '#1a8fc1', '#0a4f80'],
+		// Background (Smoother, mid-tone radial gradient)
+		backgroundGradient: ['#6bc5e8', '#40a9d4', '#1f85b3', '#11658f'],
 		backgroundGradientStart: { x: 0.3, y: 0.2 },
 		backgroundGradientEnd: { x: 1, y: 1 },
 
@@ -28,10 +28,10 @@ export const frutigerAero: ThemeStyle = {
 		cardBorderWidth: 1,
 
 		// Text
-		textPrimary: 'rgba(120, 230, 255, 0.95)',
-		textSecondary: 'rgba(100, 190, 255, 0.6)',
-		textMuted: 'rgba(0, 150, 220, 0.5)',
-		textOnAccent: 'rgba(255, 255, 255, 0.95)',
+		textPrimary: '#123655',
+		textSecondary: '#3D6E8F',
+		textMuted: '#3D6E8F',
+		textOnAccent: '#FFFFFF',
 
 		// Accent
 		accentGradient: ['#00c8ff', '#40ffd0'],
@@ -44,8 +44,8 @@ export const frutigerAero: ThemeStyle = {
 		controlIcon: 'rgba(0, 40, 100, 0.9)',
 
 		// Progress
-		progressTrack: 'rgba(0, 40, 80, 0.55)',
-		progressFillGradient: ['#0090ff', '#00ffc8'],
+		progressTrack: 'rgba(0, 40, 80, 0.35)',
+		progressFillGradient: ['#33b5e5', '#00ffc8'],
 
 		// Tab Bar
 		tabBarBackground: 'rgba(160, 225, 255, 0.75)',
@@ -102,11 +102,14 @@ export const frutigerAero: ThemeStyle = {
 	},
 	typography: {
 		fontFamily: 'Rajdhani_600SemiBold',
-		titleSize: 22,
-		titleWeight: '700',
-		bodySize: 14,
-		bodyWeight: '600',
-		captionSize: 10,
+		titleSize: 20,
+		titleWeight: '800',
+		bodySize: 13,
+		bodyWeight: '700',
+		captionSize: 11,
 		captionWeight: '600',
+		textShadowColor: 'rgba(255, 255, 255, 0.5)',
+		textShadowOffset: { width: 0, height: 1 },
+		textShadowRadius: 2,
 	},
 }

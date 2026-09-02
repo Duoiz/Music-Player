@@ -155,8 +155,11 @@ export interface ThemeTypography {
 	bodySize: number
 	bodyWeight: '400' | '500' | '600' | '700'
 	captionSize: number
-	captionWeight: '400' | '500' | '600'
+	captionWeight: '400' | '500' | '600' | '700'
 	fontFamily?: string
+	textShadowColor?: string
+	textShadowOffset?: { width: number; height: number }
+	textShadowRadius?: number
 }
 
 export interface ThemeStyle {

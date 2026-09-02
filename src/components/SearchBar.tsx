@@ -72,8 +72,8 @@ export function SearchBar({
 	const borderColor = focusAnim.interpolate({
 		inputRange: [0, 1],
 		outputRange: [
-			theme.id === 'frutiger-aero' ? 'rgba(0,100,180,0.3)' : theme.colors.cardBorderColor,
-			theme.id === 'frutiger-aero' ? 'rgba(0,180,255,0.7)' : theme.colors.accentPrimary
+			theme.id === 'frutiger-aero' ? 'rgba(255,255,255,0.85)' : theme.colors.cardBorderColor,
+			theme.id === 'frutiger-aero' ? theme.colors.accentPrimary : theme.colors.accentPrimary
 		],
 	})
 
@@ -82,19 +82,19 @@ export function SearchBar({
 			style={[
 				styles.container,
 				{
-					backgroundColor: theme.id === 'frutiger-aero' ? 'rgba(0,30,70,0.55)' : theme.colors.controlBackground,
+					backgroundColor: theme.id === 'frutiger-aero' ? 'rgba(255,255,255,0.65)' : theme.colors.controlBackground,
 					borderRadius: theme.metrics.borderRadiusMedium,
 					borderColor: borderColor,
 					borderWidth: 1.5,
-					shadowColor: theme.id === 'frutiger-aero' ? 'rgba(0,180,255,0.4)' : theme.metrics.shadowLight.color,
+					shadowColor: theme.id === 'frutiger-aero' ? 'rgba(0,180,255,0.3)' : theme.metrics.shadowLight.color,
 					shadowOffset: theme.metrics.shadowLight.offset,
-					shadowOpacity: isFocused ? (theme.id === 'frutiger-aero' ? 0.6 : 0.2) : (theme.id === 'frutiger-aero' ? 0 : theme.metrics.shadowLight.opacity),
-					shadowRadius: theme.id === 'frutiger-aero' ? 12 : theme.metrics.shadowLight.radius,
+					shadowOpacity: isFocused ? 0.6 : 0.2,
+					shadowRadius: theme.id === 'frutiger-aero' ? 10 : theme.metrics.shadowLight.radius,
 					elevation: theme.metrics.shadowLight.elevation,
 				},
 			]}
 		>
-			<Ionicons name="search" size={20} color={theme.id === 'frutiger-aero' ? 'rgba(0,180,255,0.7)' : theme.colors.textMuted} style={styles.searchIcon} />
+			<Ionicons name="search" size={20} color={theme.id === 'frutiger-aero' ? theme.colors.textSecondary : theme.colors.textMuted} style={styles.searchIcon} />
 			<TextInput
 				style={[
 					styles.input,

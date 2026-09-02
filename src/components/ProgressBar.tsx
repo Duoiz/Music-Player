@@ -87,7 +87,7 @@ export function ProgressBar() {
 					style={[
 						styles.time,
 						{
-							color: theme.id === 'frutiger-aero' ? 'rgba(0,180,255,0.7)' : theme.colors.textSecondary,
+							color: theme.colors.textPrimary,
 							fontSize: 10,
 							fontFamily: theme.id === 'frutiger-aero' ? 'Orbitron_600SemiBold' : theme.typography.fontFamily,
 						},
@@ -99,7 +99,7 @@ export function ProgressBar() {
 					style={[
 						styles.time,
 						{
-							color: theme.id === 'frutiger-aero' ? 'rgba(0,150,220,0.5)' : theme.colors.textSecondary,
+							color: theme.colors.textSecondary,
 							fontSize: 10,
 							fontFamily: theme.id === 'frutiger-aero' ? 'Orbitron_600SemiBold' : theme.typography.fontFamily,
 						},

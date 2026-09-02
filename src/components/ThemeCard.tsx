@@ -1,8 +1,9 @@
 import React from 'react'
 import { Ionicons } from '@expo/vector-icons'
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from './ThemeProvider'
+import { AnimatedButton } from './AnimatedButton'
 import type { ThemeStyle } from '../types'
 
 interface ThemeCardProps {
@@ -21,7 +22,7 @@ export function ThemeCard({ themeStyle, isActive, isLocked, onPress }: ThemeCard
 	const currentTheme = useTheme()
 
 	return (
-		<TouchableOpacity
+		<AnimatedButton
 			style={[
 				styles.container,
 				{
@@ -40,7 +41,7 @@ export function ThemeCard({ themeStyle, isActive, isLocked, onPress }: ThemeCard
 				},
 			]}
 			onPress={onPress}
-			activeOpacity={0.8}
+			activeScale={0.95}
 		>
 			{/* Theme Preview — mini gradient mockup */}
 			<LinearGradient
@@ -136,7 +137,7 @@ export function ThemeCard({ themeStyle, isActive, isLocked, onPress }: ThemeCard
 				<Text
 					style={[
 						styles.author,
-						{ color: currentTheme.colors.textMuted, fontSize: currentTheme.typography.captionSize },
+						{ color: currentTheme.colors.textSecondary, fontSize: currentTheme.typography.captionSize },
 					]}
 					numberOfLines={1}
 				>
@@ -155,7 +156,7 @@ export function ThemeCard({ themeStyle, isActive, isLocked, onPress }: ThemeCard
 					<Ionicons name="checkmark-circle" size={24} color={themeStyle.colors.accentPrimary} style={styles.activeIcon} />
 				</View>
 			)}
-		</TouchableOpacity>
+		</AnimatedButton>
 	)
 }
 
