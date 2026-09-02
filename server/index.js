@@ -1,10 +1,19 @@
 const express = require('express')
 const cors = require('cors')
+const https = require('https')
+const { HttpsProxyAgent } = require('https-proxy-agent')
 const { searchYouTubeMusic } = require('./services/search')
 const { extractStreamUrl } = require('./services/ytdlp')
 
 const app = express()
 const PORT = process.env.PORT || 3001
+
+const PROXY_URL = 'http://zdhylekl:vaigrn5oy9qu@31.59.20.176:6754'
+const proxyAgent = new HttpsProxyAgent(PROXY_URL)
+
+// Cache for stream URLs
+const streamUrlCache = new Map()
+const CACHE_TTL = 1000 * 60 * 60 * 2 // 2 hours
 
 // Middleware
 app.use(cors())
@@ -62,15 +71,86 @@ app.get('/api/stream/:videoId', async (req, res) => {
 		}
 
 		console.log(`[STREAM] Extracting stream for: ${videoId}`)
-		const streamInfo = await extractStreamUrl(videoId)
+		
+		let streamInfo = streamUrlCache.get(`info_${videoId}`);
+		if (!streamInfo) {
+			streamInfo = await extractStreamUrl(videoId)
+			streamUrlCache.set(`info_${videoId}`, streamInfo)
+			streamUrlCache.set(videoId, streamInfo.streamUrl)
+			setTimeout(() => {
+				streamUrlCache.delete(`info_${videoId}`)
+				streamUrlCache.delete(videoId)
+			}, CACHE_TTL)
+		}
+
 		console.log(`[STREAM] Success: ${streamInfo.metadata.title}`)
 
-		res.json(streamInfo)
+		// Override streamUrl with proxy endpoint because Google strictly enforces IP-locking
+		const responseInfo = { ...streamInfo }
+		const host = req.get('host') || `localhost:${PORT}`
+		responseInfo.streamUrl = `${req.protocol}://${host}/api/proxy/${videoId}`
+
+		res.json(responseInfo)
 	} catch (error) {
 		console.error('[STREAM] Error:', error.message)
 		res.status(500).json({ error: 'Stream extraction failed', details: error.message })
 	}
 })
+
+// ============================================================
+// Proxy — Proxy audio through Webshare
+// ============================================================
+app.get('/api/proxy/:videoId', async (req, res) => {
+	const { videoId } = req.params;
+	try {
+		let streamUrl = streamUrlCache.get(videoId);
+		if (!streamUrl) {
+			console.log(`[PROXY] Cache miss for ${videoId}, extracting URL...`);
+			const info = await extractStreamUrl(videoId);
+			streamUrl = info.streamUrl;
+			streamUrlCache.set(videoId, streamUrl);
+			setTimeout(() => streamUrlCache.delete(videoId), CACHE_TTL);
+		}
+
+		const requestHeaders = {
+			'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+		};
+		if (req.headers.range) {
+			requestHeaders['Range'] = req.headers.range;
+		}
+
+		const proxyReq = https.get(streamUrl, {
+			agent: proxyAgent,
+			headers: requestHeaders,
+		}, (proxyRes) => {
+			res.status(proxyRes.statusCode);
+			
+			const headersToForward = ['content-type', 'content-length', 'content-range', 'accept-ranges'];
+			for (const header of headersToForward) {
+				if (proxyRes.headers[header]) {
+					res.setHeader(header, proxyRes.headers[header]);
+				}
+			}
+
+			proxyRes.pipe(res);
+		});
+
+		proxyReq.on('error', (err) => {
+			console.error('[PROXY] Stream error:', err.message);
+			if (!res.headersSent) {
+				res.status(500).json({ error: 'Stream proxy failed' });
+			}
+		});
+
+		req.on('close', () => {
+			proxyReq.destroy();
+		});
+
+	} catch (error) {
+		console.error('[PROXY] Extraction error:', error.message);
+		res.status(500).json({ error: 'Extraction failed' });
+	}
+});
 
 // ============================================================
 // Themes — UGC themes (hardcoded for MVP)
@@ -115,6 +195,7 @@ app.listen(PORT, '0.0.0.0', () => {
   │     GET /api/health                     │
   │     GET /api/search?q=<query>           │
   │     GET /api/stream/:videoId            │
+  │     GET /api/proxy/:videoId             │
   │     GET /api/themes                     │
   │                                         │
   └─────────────────────────────────────────┘

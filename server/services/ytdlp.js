@@ -2,6 +2,9 @@ const { exec } = require('child_process')
 const { promisify } = require('util')
 const execAsync = promisify(exec)
 
+const PROXY_URL = 'http://zdhylekl:vaigrn5oy9qu@31.59.20.176:6754'
+const proxyArg = `--proxy "${PROXY_URL}" --extractor-args "youtube:player_client=android"`
+
 /**
  * Extract the direct audio stream URL from a YouTube video using yt-dlp.
  *
@@ -18,13 +21,13 @@ async function extractStreamUrl(videoId) {
 		// --no-playlist: don't download entire playlist
 		// --no-warnings: suppress warnings
 		const { stdout: streamUrl } = await execAsync(
-			`python -m yt_dlp -f bestaudio --get-url --no-playlist --no-warnings "${youtubeUrl}"`,
+			`python -m yt_dlp ${proxyArg} -f "m4a/bestaudio/best" --get-url --no-playlist --no-warnings "${youtubeUrl}"`,
 			{ timeout: 30000 }
 		)
 
 		// Also extract metadata (title, artist, thumbnail, duration)
 		const { stdout: metadataJson } = await execAsync(
-			`python -m yt_dlp --dump-json --no-playlist --no-warnings "${youtubeUrl}"`,
+			`python -m yt_dlp ${proxyArg} --dump-json --no-playlist --no-warnings "${youtubeUrl}"`,
 			{ timeout: 30000 }
 		)
 
@@ -46,7 +49,7 @@ async function extractStreamUrl(videoId) {
 		// If metadata extraction fails, try to get at least the stream URL
 		try {
 			const { stdout: streamUrl } = await execAsync(
-				`python -m yt_dlp -f bestaudio --get-url --no-playlist --no-warnings "${youtubeUrl}"`,
+				`python -m yt_dlp ${proxyArg} -f "m4a/bestaudio/best" --get-url --no-playlist --no-warnings "${youtubeUrl}"`,
 				{ timeout: 30000 }
 			)
 

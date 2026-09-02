@@ -47,10 +47,36 @@ export async function downloadSong(song: Song | Track): Promise<boolean> {
 			}
 		)
 
-		const result = await downloadResumable.downloadAsync()
-		
-		if (!result || result.status !== 200) {
-			throw new Error(`Download failed with status ${result?.status}. URL was: ${streamInfo.streamUrl.substring(0, 50)}...`)
+		let result;
+		let retries = 5; // Retry up to 5 times if the connection drops
+
+		while (retries > 0) {
+			try {
+				// If we haven't started, or if we need to restart from scratch, use downloadAsync
+				// Wait, if it threw, we should use resumeAsync to pick up where it dropped!
+				if (!result) {
+					result = await downloadResumable.downloadAsync()
+				} else {
+					console.log(`[DOWNLOAD] Resuming download... (${retries} retries left)`)
+					result = await downloadResumable.resumeAsync()
+				}
+
+				if (result && (result.status === 200 || result.status === 206)) {
+					break; // Success!
+				} else if (result) {
+					throw new Error(`Download failed with status ${result.status}`)
+				}
+			} catch (err) {
+				console.log(`[DOWNLOAD] Interrupted at ${store.activeDownloads[songId] || 0}%`, err);
+				retries--;
+				if (retries === 0) {
+					throw new Error(`Download failed after multiple retries. URL was: ${streamInfo.streamUrl.substring(0, 50)}...`)
+				}
+				// Wait 2 seconds before resuming
+				await new Promise(resolve => setTimeout(resolve, 2000));
+				// Set result to something truthy so the next loop triggers resumeAsync()
+				result = 'resume_needed';
+			}
 		}
 
 		// 4. Save to store

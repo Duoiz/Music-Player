@@ -10,6 +10,7 @@
 	"dependencies": {
 		"cors": "^2.8.5",
 		"express": "^4.21.0",
+		"https-proxy-agent": "^9.1.0",
 		"yt-dlp-exec": "^1.0.2",
 		"yt-search": "^2.13.1",
 		"ytsr": "^3.8.4"
