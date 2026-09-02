@@ -5,7 +5,7 @@ import type { Song, StreamInfo } from '../types'
  * In development, point to your local server.
  * In production, replace with your deployed server URL.
  */
-const API_BASE_URL = 'https://duoiz--music-player-backend-fastapi-app.modal.run'
+const API_BASE_URL = 'http://192.168.31.139:3001'
 
 // For iOS simulator, use 'http://localhost:3001' instead
 // For physical device on same network, use your machine's local IP

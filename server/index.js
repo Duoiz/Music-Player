@@ -10,6 +10,19 @@ const PORT = process.env.PORT || 3001
 app.use(cors())
 app.use(express.json())
 
+// Network Traffic Logger
+app.use((req, res, next) => {
+	const start = Date.now()
+	res.on('finish', () => {
+		const duration = Date.now() - start
+		// Calculate rough payload size. For exact packet tracking, you'd need a packet sniffer,
+		// but this logs the API bandwidth being used.
+		const bytes = res.get('Content-Length') || 0
+		console.log(`[NETWORK] ${req.method} ${req.originalUrl} | Status: ${res.statusCode} | Bytes Sent: ${bytes} B | Time: ${duration}ms`)
+	})
+	next()
+})
+
 // ============================================================
 // Health check
 // ============================================================
