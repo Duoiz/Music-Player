@@ -112,43 +112,76 @@ app.get('/api/proxy/:videoId', async (req, res) => {
 			setTimeout(() => streamUrlCache.delete(videoId), CACHE_TTL);
 		}
 
+		let rangeHeader = req.headers.range;
+
+		// OPTIMIZATION: If the client requests the start of the file unboundedly (e.g., bytes=0-),
+		// we cap it to the first 1MB (~1 minute of 128kbps audio).
+		// This acts as a low-bandwidth "preview". If they skip the song, we only used 1MB.
+		// If they keep listening, the player will naturally request the next chunk (bytes=1048576-)
+		// which we will leave unbounded to download the rest of the song efficiently.
+		if (rangeHeader === 'bytes=0-') {
+			rangeHeader = 'bytes=0-1048575';
+		} else if (!rangeHeader) {
+			// If no range is provided, force a 1MB chunk anyway to prevent full download on tap
+			rangeHeader = 'bytes=0-1048575';
+		}
+
 		const requestHeaders = {
 			'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
 		};
-		if (req.headers.range) {
-			requestHeaders['Range'] = req.headers.range;
+		if (rangeHeader) {
+			requestHeaders['Range'] = rangeHeader;
 		}
 
-		const proxyReq = https.get(streamUrl, {
-			agent: proxyAgent,
-			headers: requestHeaders,
-		}, (proxyRes) => {
-			res.status(proxyRes.statusCode);
-			
-			const headersToForward = ['content-type', 'content-length', 'content-range', 'accept-ranges'];
-			for (const header of headersToForward) {
-				if (proxyRes.headers[header]) {
-					res.setHeader(header, proxyRes.headers[header]);
+		let currentReq = null;
+		let currentRes = null;
+
+		const makeRequest = (urlToFetch) => {
+			currentReq = https.get(urlToFetch, {
+				agent: proxyAgent,
+				headers: requestHeaders,
+			}, (proxyRes) => {
+				currentRes = proxyRes;
+
+				// Handle redirects (301, 302, 303, 307, 308)
+				if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+					// Consume the response data to free up memory before redirecting
+					proxyRes.resume();
+					return makeRequest(proxyRes.headers.location);
 				}
-			}
 
-			proxyRes.pipe(res);
-		});
+				res.status(proxyRes.statusCode);
+				
+				const headersToForward = ['content-type', 'content-length', 'content-range', 'accept-ranges'];
+				for (const header of headersToForward) {
+					if (proxyRes.headers[header]) {
+						res.setHeader(header, proxyRes.headers[header]);
+					}
+				}
 
-		proxyReq.on('error', (err) => {
-			console.error('[PROXY] Stream error:', err.message);
-			if (!res.headersSent) {
-				res.status(500).json({ error: 'Stream proxy failed' });
-			}
-		});
+				proxyRes.pipe(res);
+			});
+
+			currentReq.on('error', (err) => {
+				console.error('[PROXY] Stream error:', err.message);
+				if (!res.headersSent) {
+					res.status(500).json({ error: 'Stream proxy failed' });
+				}
+			});
+		};
+
+		makeRequest(streamUrl);
 
 		req.on('close', () => {
-			proxyReq.destroy();
+			if (currentReq) currentReq.destroy();
+			if (currentRes) currentRes.destroy();
 		});
 
 	} catch (error) {
 		console.error('[PROXY] Extraction error:', error.message);
-		res.status(500).json({ error: 'Extraction failed' });
+		if (!res.headersSent) {
+			res.status(500).json({ error: 'Extraction failed' });
+		}
 	}
 });
 

@@ -69,6 +69,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 	play: async (track) => {
 		try {
 			if (track) {
+				if (!track.url || typeof track.url !== 'string' || track.url.trim() === '') {
+					console.warn('Cannot play track: URL is empty or invalid', track)
+					set({ isLoading: false })
+					return
+				}
+
 				set({ isLoading: true })
 
 				// Reset queue and add the new track
@@ -85,6 +91,21 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 				set({ currentTrack: track, queue: [track] })
 				await TrackPlayer.play()
 				set({ isPlaying: true, isLoading: false })
+
+				// Ensure equalizer settings persist to the newly loaded track/ExoPlayer session
+				// Delay needed because ExoPlayer creates a new audioSessionId which isn't
+				// immediately available after play()
+				try {
+					const { useEQStore, applyEQToPlayer } = await import('./eqStore')
+					const { bands, isEnabled } = useEQStore.getState()
+					if (isEnabled) {
+						// Wait for ExoPlayer to fully initialize the new audio session
+						await new Promise((resolve) => setTimeout(resolve, 500))
+						await applyEQToPlayer(bands, isEnabled)
+					}
+				} catch (eqErr) {
+					// silent catch
+				}
 			} else {
 				await TrackPlayer.play()
 				set({ isPlaying: true })

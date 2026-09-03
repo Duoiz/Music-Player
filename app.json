@@ -29,7 +29,10 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "package": "com.music.player"
+      "package": "com.music.player",
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,6 +41,7 @@
       "expo-router",
       "expo-font"
     ],
+    "newArchEnabled": false,
     "experiments": {
       "typedRoutes": true,
       "tsconfigPaths": true
