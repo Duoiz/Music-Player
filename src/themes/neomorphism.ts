@@ -18,45 +18,45 @@ export const neomorphism: ThemeStyle = {
 	useInnerShadows: true, // Key characteristic
 	useTextures: false,
 	colors: {
-		// Background — uniform soft gray (neomorphism needs solid bg)
-		backgroundGradient: ['#E0E5EC', '#E0E5EC', '#E0E5EC'],
+		// Background — soft cool gray-blue base (elements are extruded FROM this canvas)
+		backgroundGradient: ['#E6E9F2', '#E6E9F2', '#E6E9F2'],
 		backgroundGradientStart: { x: 0, y: 0 },
 		backgroundGradientEnd: { x: 1, y: 1 },
 
-		// Card — same as background (elements are extruded FROM the bg)
-		cardGradient: ['#E0E5EC', '#E0E5EC'],
-		cardBorderColor: 'transparent',
-		cardBorderWidth: 0,
+		// Card — matching base surface with subtle border
+		cardGradient: ['#E6E9F2', '#E6E9F2'],
+		cardBorderColor: 'rgba(255, 255, 255, 0.6)',
+		cardBorderWidth: 1,
 
-		// Text
-		textPrimary: '#2D3436',
-		textSecondary: '#636E72',
-		textMuted: '#B2BEC3',
+		// Text (WCAG AA compliant against #E6E9F2)
+		textPrimary: '#1E2432',
+		textSecondary: '#4A5568',
+		textMuted: '#8A94A6',
 		textOnAccent: '#FFFFFF',
 
-		// Accent — soft teal
-		accentGradient: ['#00CEC9', '#55EFC4'],
-		accentPrimary: '#00CEC9',
-		accentSecondary: '#55EFC4',
+		// Accent — warm coral for playback and tactile highlights
+		accentGradient: ['#FF5A5F', '#FF7E82'],
+		accentPrimary: '#FF5A5F',
+		accentSecondary: '#FF7E82',
 
 		// Controls
-		controlBackground: '#E0E5EC',
-		controlBackgroundActive: '#D5DAE1',
-		controlIcon: '#2D3436',
+		controlBackground: '#E6E9F2',
+		controlBackgroundActive: '#DCE0EB',
+		controlIcon: '#2D3748',
 
-		// Progress
-		progressTrack: '#D5DAE1',
-		progressFillGradient: ['#00CEC9', '#55EFC4'],
+		// Progress — inset channel with vibrant fill
+		progressTrack: '#DCE0EB',
+		progressFillGradient: ['#FF5A5F', '#FF7E82'],
 
 		// Tab Bar
-		tabBarBackground: '#E0E5EC',
-		tabBarActive: '#00CEC9',
-		tabBarInactive: '#B2BEC3',
+		tabBarBackground: '#E6E9F2',
+		tabBarActive: '#FF5A5F',
+		tabBarInactive: '#8A94A6',
 
-		// Misc — neomorphism uses dual shadows instead of single
-		shadowColor: 'rgba(0, 0, 0, 0.15)',
-		divider: 'rgba(0, 0, 0, 0.06)',
-		overlay: 'rgba(0, 0, 0, 0.2)',
+		// Dual-shadow tokens
+		shadowColor: '#9AA7BD',
+		divider: 'rgba(154, 167, 189, 0.25)',
+		overlay: 'rgba(30, 36, 50, 0.35)',
 	},
 	metrics: {
 		borderRadiusLarge: 25,

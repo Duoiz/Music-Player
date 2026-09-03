@@ -16,6 +16,10 @@ import { GlassCard } from '../src/components/GlassCard'
 import { ProgressBar } from '../src/components/ProgressBar'
 import { VolumeSlider } from '../src/components/VolumeSlider'
 import { BackgroundParticles } from '../src/components/BackgroundParticles'
+import { VinylAlbumArt } from '../src/components/skeuo/VinylAlbumArt'
+import { RotaryVolumeKnob } from '../src/components/skeuo/RotaryVolumeKnob'
+import { NeumorphicPlayButton } from '../src/components/controls/NeumorphicPlayButton'
+import { NeumorphicSurface } from '../src/components/surfaces/NeumorphicSurface'
 import { usePlayerStore } from '../src/stores/playerStore'
 import { useHapticFeedback } from '../src/hooks/useHapticFeedback'
 import { extractImageColors } from '../src/utils/imageColors'
@@ -49,8 +53,12 @@ export default function PlayerScreen() {
 		theme.colors.backgroundGradient
 	)
 
-	// Extract colors from album art for dynamic background
+	// Extract colors from album art for dynamic background (except neumorphism/skeuomorphism which require consistent chassis color)
 	useEffect(() => {
+		if (theme.id === 'neomorphism' || theme.id === 'skeuomorphism') {
+			setBgColors(theme.colors.backgroundGradient)
+			return
+		}
 		if (currentTrack?.artwork) {
 			extractImageColors(currentTrack.artwork).then((colors) => {
 				setBgColors([colors.primary, colors.secondary, colors.background])
@@ -58,7 +66,7 @@ export default function PlayerScreen() {
 		} else {
 			setBgColors(theme.colors.backgroundGradient)
 		}
-	}, [currentTrack?.artwork, theme.colors.backgroundGradient])
+	}, [currentTrack?.artwork, theme.colors.backgroundGradient, theme.id])
 
 	const handlePlayPause = useCallback(() => {
 		haptic.medium()
@@ -138,32 +146,41 @@ export default function PlayerScreen() {
 				{/* Player Content */}
 				<View style={styles.content}>
 					{/* Album Art */}
-					<GlassCard style={styles.albumCard} intensity="heavy">
-						{currentTrack?.artwork ? (
-							<Image
-								source={{ uri: currentTrack.artwork }}
-								style={[
-									styles.albumArt,
-									{ borderRadius: theme.metrics.borderRadiusMedium },
-								]}
-								contentFit="cover"
-								transition={300}
-							/>
-						) : (
-							<LinearGradient
-								colors={theme.colors.accentGradient as [string, string, ...string[]]}
-								start={{ x: 0, y: 0 }}
-								end={{ x: 1, y: 1 }}
-								style={[
-									styles.albumArt,
-									styles.albumPlaceholder,
-									{ borderRadius: theme.metrics.borderRadiusMedium },
-								]}
-							>
-								<Ionicons name="musical-notes" size={80} color="rgba(255,255,255,0.8)" />
-							</LinearGradient>
-						)}
-					</GlassCard>
+					{theme.id === 'skeuomorphism' || theme.id === 'neomorphism' ? (
+						<VinylAlbumArt
+							artwork={currentTrack?.artwork}
+							isPlaying={isPlaying}
+							themeId={theme.id}
+							accentColor={theme.colors.accentPrimary}
+						/>
+					) : (
+						<GlassCard style={styles.albumCard} intensity="heavy">
+							{currentTrack?.artwork ? (
+								<Image
+									source={{ uri: currentTrack.artwork }}
+									style={[
+										styles.albumArt,
+										{ borderRadius: theme.metrics.borderRadiusMedium },
+									]}
+									contentFit="cover"
+									transition={300}
+								/>
+							) : (
+								<LinearGradient
+									colors={theme.colors.accentGradient as [string, string, ...string[]]}
+									start={{ x: 0, y: 0 }}
+									end={{ x: 1, y: 1 }}
+									style={[
+										styles.albumArt,
+										styles.albumPlaceholder,
+										{ borderRadius: theme.metrics.borderRadiusMedium },
+									]}
+								>
+									<Ionicons name="musical-notes" size={80} color="rgba(255,255,255,0.8)" />
+								</LinearGradient>
+							)}
+						</GlassCard>
+					)}
 
 					{/* Song Info */}
 					<View style={styles.songInfo}>
@@ -231,74 +248,104 @@ export default function PlayerScreen() {
 						</TouchableOpacity>
 
 						{/* Previous */}
-						<TouchableOpacity
-							onPress={handlePrevious}
-							style={[
-								styles.controlButton,
-								{
-									backgroundColor: theme.colors.controlBackground,
-									borderRadius: 28,
-								},
-							]}
-						>
-							<Ionicons name="play-skip-back" size={28} color={theme.colors.controlIcon} />
-						</TouchableOpacity>
-
-						{/* Play / Pause */}
-						<TouchableOpacity
-							onPress={handlePlayPause}
-							style={[
-								styles.playButton,
-								theme.id === 'frutiger-aero' ? {
-									shadowColor: isPlaying ? 'rgba(255,50,50,0.6)' : 'rgba(0,255,100,0.5)',
-									shadowOffset: { width: 0, height: 4 },
-									shadowOpacity: 1,
-									shadowRadius: 10,
-									elevation: 6,
-								} : {
-									shadowColor: theme.metrics.shadowAccent.color,
-									shadowOffset: theme.metrics.shadowAccent.offset,
-									shadowOpacity: theme.metrics.shadowAccent.opacity,
-									shadowRadius: theme.metrics.shadowAccent.radius,
-									elevation: theme.metrics.shadowAccent.elevation,
-								},
-							]}
-						>
-							<LinearGradient
-								colors={
-									theme.id === 'frutiger-aero'
-										? isPlaying
-											? ['rgba(255,100,100,0.9)', 'rgba(200,30,30,0.95)']
-											: ['rgba(100,255,150,0.9)', 'rgba(20,200,80,0.95)']
-										: (theme.colors.accentGradient as [string, string, ...string[]])
-								}
-								start={{ x: 0, y: 0 }}
-								end={{ x: 1, y: 1 }}
+						{theme.id === 'neomorphism' ? (
+							<TouchableOpacity onPress={handlePrevious}>
+								<NeumorphicSurface borderRadius={28} elevation={4} style={styles.controlButton}>
+									<Ionicons name="play-skip-back" size={24} color={theme.colors.controlIcon} />
+								</NeumorphicSurface>
+							</TouchableOpacity>
+						) : (
+							<TouchableOpacity
+								onPress={handlePrevious}
 								style={[
-									styles.playButtonGradient,
-									theme.id === 'frutiger-aero' && {
-										borderWidth: 1.5,
-										borderColor: 'rgba(255,255,255,0.7)',
-									}
+									styles.controlButton,
+									{
+										backgroundColor: theme.colors.controlBackground,
+										borderRadius: 28,
+										borderWidth: theme.id === 'skeuomorphism' ? 1.5 : 0,
+										borderColor: 'rgba(255, 255, 255, 0.12)',
+									},
 								]}
 							>
-								<Ionicons name={isPlaying ? 'pause' : 'play'} size={36} color={theme.colors.textOnAccent} />
-							</LinearGradient>
-						</TouchableOpacity>
+								<Ionicons name="play-skip-back" size={28} color={theme.colors.controlIcon} />
+							</TouchableOpacity>
+						)}
+
+						{/* Play / Pause */}
+						{theme.id === 'neomorphism' || theme.id === 'skeuomorphism' ? (
+							<NeumorphicPlayButton
+								isPlaying={isPlaying}
+								onPress={handlePlayPause}
+								accentColor={theme.colors.accentPrimary}
+								themeId={theme.id}
+								size={76}
+							/>
+						) : (
+							<TouchableOpacity
+								onPress={handlePlayPause}
+								style={[
+									styles.playButton,
+									theme.id === 'frutiger-aero' ? {
+										shadowColor: isPlaying ? 'rgba(255,50,50,0.6)' : 'rgba(0,255,100,0.5)',
+										shadowOffset: { width: 0, height: 4 },
+										shadowOpacity: 1,
+										shadowRadius: 10,
+										elevation: 6,
+									} : {
+										shadowColor: theme.metrics.shadowAccent.color,
+										shadowOffset: theme.metrics.shadowAccent.offset,
+										shadowOpacity: theme.metrics.shadowAccent.opacity,
+										shadowRadius: theme.metrics.shadowAccent.radius,
+										elevation: theme.metrics.shadowAccent.elevation,
+									},
+								]}
+							>
+								<LinearGradient
+									colors={
+										theme.id === 'frutiger-aero'
+											? isPlaying
+												? ['rgba(255,100,100,0.9)', 'rgba(200,30,30,0.95)']
+												: ['rgba(100,255,150,0.9)', 'rgba(20,200,80,0.95)']
+											: (theme.colors.accentGradient as [string, string, ...string[]])
+									}
+									start={{ x: 0, y: 0 }}
+									end={{ x: 1, y: 1 }}
+									style={[
+										styles.playButtonGradient,
+										theme.id === 'frutiger-aero' && {
+											borderWidth: 1.5,
+											borderColor: 'rgba(255,255,255,0.7)',
+										}
+									]}
+								>
+									<Ionicons name={isPlaying ? 'pause' : 'play'} size={36} color={theme.colors.textOnAccent} />
+								</LinearGradient>
+							</TouchableOpacity>
+						)}
 
 						{/* Next */}
-						<TouchableOpacity
-							onPress={handleNext}
-							style={[
-								styles.controlButton,
-								{
-									backgroundColor: theme.colors.controlBackground,
-									borderRadius: 28,
-								},
-							]}
-						>
-							<Ionicons name="play-skip-forward" size={28} color={theme.colors.controlIcon} />
-						</TouchableOpacity>
+						{theme.id === 'neomorphism' ? (
+							<TouchableOpacity onPress={handleNext}>
+								<NeumorphicSurface borderRadius={28} elevation={4} style={styles.controlButton}>
+									<Ionicons name="play-skip-forward" size={24} color={theme.colors.controlIcon} />
+								</NeumorphicSurface>
+							</TouchableOpacity>
+						) : (
+							<TouchableOpacity
+								onPress={handleNext}
+								style={[
+									styles.controlButton,
+									{
+										backgroundColor: theme.colors.controlBackground,
+										borderRadius: 28,
+										borderWidth: theme.id === 'skeuomorphism' ? 1.5 : 0,
+										borderColor: 'rgba(255, 255, 255, 0.12)',
+									},
+								]}
+							>
+								<Ionicons name="play-skip-forward" size={28} color={theme.colors.controlIcon} />
+							</TouchableOpacity>
+						)}
 
 						{/* Repeat */}
 						<TouchableOpacity
@@ -325,7 +372,14 @@ export default function PlayerScreen() {
 
 					{/* Volume */}
 					<View style={styles.volumeContainer}>
-						<VolumeSlider />
+						{theme.id === 'skeuomorphism' ? (
+							<RotaryVolumeKnob
+								accentColor={theme.colors.accentPrimary}
+								themeId={theme.id}
+							/>
+						) : (
+							<VolumeSlider />
+						)}
 					</View>
 				</View>
 			</SafeAreaView>

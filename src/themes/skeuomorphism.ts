@@ -18,45 +18,45 @@ export const skeuomorphism: ThemeStyle = {
 	useInnerShadows: false,
 	useTextures: true, // Key characteristic
 	colors: {
-		// Background — dark brushed metal
-		backgroundGradient: ['#2C2C2E', '#1C1C1E', '#2C2C2E'],
+		// Background — dark brushed metal chassis
+		backgroundGradient: ['#28282B', '#1A1A1D', '#121214'],
 		backgroundGradientStart: { x: 0, y: 0 },
-		backgroundGradientEnd: { x: 1, y: 1 },
+		backgroundGradientEnd: { x: 0.5, y: 1 },
 
-		// Card — raised panel with metallic tones
-		cardGradient: ['#3A3A3C', '#2C2C2E'],
-		cardBorderColor: 'rgba(100, 100, 100, 0.5)',
-		cardBorderWidth: 1,
+		// Card — raised aluminum chassis panel with beveled edge
+		cardGradient: ['#343438', '#222226'],
+		cardBorderColor: 'rgba(255, 255, 255, 0.15)',
+		cardBorderWidth: 1.5,
 
-		// Text
-		textPrimary: '#F2F2F7',
-		textSecondary: '#AEAEB2',
-		textMuted: '#636366',
-		textOnAccent: '#FFFFFF',
+		// Text — high legibility mechanical console readout
+		textPrimary: '#F5F5F7',
+		textSecondary: '#C7C7CC',
+		textMuted: '#8E8E93',
+		textOnAccent: '#000000',
 
-		// Accent — warm amber/orange (like vintage VU meters)
-		accentGradient: ['#FF9F0A', '#FFD60A'],
+		// Accent — warm amber / vintage VU meter glow
+		accentGradient: ['#FF9F0A', '#FFB340'],
 		accentPrimary: '#FF9F0A',
-		accentSecondary: '#FFD60A',
+		accentSecondary: '#FFB340',
 
-		// Controls — recessed knob look
-		controlBackground: '#3A3A3C',
-		controlBackgroundActive: '#48484A',
-		controlIcon: '#F2F2F7',
+		// Controls — knurled rotary knobs and recessed push buttons
+		controlBackground: '#2A2A2E',
+		controlBackgroundActive: '#1C1C20',
+		controlIcon: '#F5F5F7',
 
-		// Progress — warm amber
-		progressTrack: 'rgba(255, 255, 255, 0.1)',
-		progressFillGradient: ['#FF9F0A', '#FFD60A'],
+		// Progress — warm amber mechanical level track
+		progressTrack: 'rgba(0, 0, 0, 0.6)',
+		progressFillGradient: ['#FF9F0A', '#FFB340'],
 
-		// Tab Bar — dark metallic
-		tabBarBackground: '#1C1C1E',
+		// Tab Bar — dark metallic console deck
+		tabBarBackground: '#161618',
 		tabBarActive: '#FF9F0A',
 		tabBarInactive: '#636366',
 
-		// Misc
-		shadowColor: 'rgba(0, 0, 0, 0.5)',
-		divider: 'rgba(255, 255, 255, 0.08)',
-		overlay: 'rgba(0, 0, 0, 0.5)',
+		// Deep cast shadows & physical borders
+		shadowColor: '#000000',
+		divider: 'rgba(255, 255, 255, 0.1)',
+		overlay: 'rgba(0, 0, 0, 0.65)',
 	},
 	metrics: {
 		borderRadiusLarge: 16, // Less rounded, more physical

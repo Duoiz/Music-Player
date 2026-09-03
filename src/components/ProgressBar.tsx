@@ -50,7 +50,7 @@ export function ProgressBar() {
 				}}
 				containerStyle={[
 					styles.slider,
-					{ borderRadius: 4 },
+					{ borderRadius: 6 },
 					theme.id === 'frutiger-aero' && {
 						borderWidth: 1,
 						borderColor: 'rgba(0,100,180,0.35)',
@@ -59,7 +59,17 @@ export function ProgressBar() {
 						shadowOpacity: 0.5,
 						shadowRadius: 8,
 						elevation: 4,
-					}
+					},
+					theme.id === 'neomorphism' && {
+						backgroundColor: '#DCE0EB',
+						borderWidth: 1,
+						borderColor: 'rgba(154, 167, 189, 0.45)',
+					},
+					theme.id === 'skeuomorphism' && {
+						backgroundColor: '#121214',
+						borderWidth: 1,
+						borderColor: 'rgba(255, 255, 255, 0.12)',
+					},
 				]}
 				renderThumb={() => (
 					<View
@@ -74,11 +84,37 @@ export function ProgressBar() {
 								shadowOpacity: 1,
 								shadowRadius: 8,
 								elevation: 8,
-							}
+							},
+							theme.id === 'neomorphism' && {
+								width: 18,
+								height: 18,
+								borderRadius: 9,
+								backgroundColor: '#E6E9F2',
+								borderWidth: 2,
+								borderColor: '#FFFFFF',
+								shadowColor: '#A3B1C6',
+								shadowOffset: { width: 2, height: 2 },
+								shadowOpacity: 0.8,
+								shadowRadius: 4,
+								elevation: 4,
+							},
+							theme.id === 'skeuomorphism' && {
+								width: 16,
+								height: 16,
+								borderRadius: 8,
+								backgroundColor: '#FF9F0A',
+								borderWidth: 2,
+								borderColor: '#FFD60A',
+								shadowColor: '#000000',
+								shadowOffset: { width: 0, height: 2 },
+								shadowOpacity: 0.6,
+								shadowRadius: 4,
+								elevation: 4,
+							},
 						]}
 					/>
 				)}
-				thumbWidth={14}
+				thumbWidth={theme.id === 'neomorphism' ? 18 : 16}
 				bubble={(value: number) => formatTime(value)}
 				style={styles.sliderOuter}
 			/>

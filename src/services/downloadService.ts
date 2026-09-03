@@ -80,14 +80,15 @@ export async function downloadSong(song: Song | Track): Promise<boolean> {
 		}
 
 		// 4. Save to store
+		const downloadedUri = typeof result === 'object' && result && 'uri' in result ? (result as any).uri : fileUri
 		store.addDownloadedTrack({
 			id: song.id,
-			url: result.uri, // Use the local URI
+			url: downloadedUri, // Use the local URI
 			title: song.title,
 			artist: song.artist,
 			artwork: ('thumbnail' in song ? song.thumbnail : song.artwork) || '',
 			duration: song.duration,
-			localFileUri: result.uri,
+			localFileUri: downloadedUri,
 			downloadedAt: Date.now(),
 		})
 

@@ -81,7 +81,7 @@ export function EQVisualizer() {
 				</Text>
 			</TouchableOpacity>
 
-			{/* Frequency Bands on Dark Glass */}
+			{/* Frequency Bands on Dark Glass / Console */}
 			<View
 				style={[
 					styles.bandsContainer,
@@ -93,6 +93,22 @@ export function EQVisualizer() {
 						paddingTop: 18,
 						paddingBottom: 14,
 					},
+					theme.id === 'neomorphism' && {
+						backgroundColor: '#E6E9F2',
+						borderRadius: 18,
+						borderWidth: 1,
+						borderColor: 'rgba(154, 167, 189, 0.35)',
+						paddingTop: 16,
+						paddingBottom: 12,
+					},
+					theme.id === 'skeuomorphism' && {
+						backgroundColor: '#1E1E22',
+						borderRadius: 14,
+						borderWidth: 1.5,
+						borderColor: 'rgba(255, 255, 255, 0.12)',
+						paddingTop: 16,
+						paddingBottom: 12,
+					},
 					{ opacity: isEnabled ? 1 : 0.5 },
 				]}
 			>
@@ -100,7 +116,16 @@ export function EQVisualizer() {
 				<View
 					style={[
 						styles.centerLine,
-						{ backgroundColor: theme.id === 'frutiger-aero' ? 'rgba(255, 255, 255, 0.15)' : theme.colors.divider },
+						{
+							backgroundColor:
+								theme.id === 'frutiger-aero'
+									? 'rgba(255, 255, 255, 0.15)'
+									: theme.id === 'neomorphism'
+									? 'rgba(154, 167, 189, 0.3)'
+									: theme.id === 'skeuomorphism'
+									? 'rgba(255, 255, 255, 0.12)'
+									: theme.colors.divider,
+						},
 					]}
 				/>
 
@@ -115,9 +140,17 @@ export function EQVisualizer() {
 								style={[
 									styles.gainText,
 									{
-										color: theme.id === 'frutiger-aero' ? '#EAF7FC' : theme.colors.textSecondary,
+										color:
+											theme.id === 'frutiger-aero'
+												? '#EAF7FC'
+												: theme.id === 'neomorphism'
+												? '#4A5568'
+												: theme.id === 'skeuomorphism'
+												? '#FF9F0A'
+												: theme.colors.textSecondary,
 										fontSize: 10,
 										fontFamily: theme.id === 'frutiger-aero' ? 'Orbitron_600SemiBold' : undefined,
+										fontWeight: '700',
 									},
 								]}
 							>
@@ -125,17 +158,39 @@ export function EQVisualizer() {
 							</Text>
 
 							{/* Bar container */}
-							<View style={[
-								styles.barContainer,
-								theme.id === 'frutiger-aero' && { width: 6 }
-							]}>
+							<View
+								style={[
+									styles.barContainer,
+									theme.id === 'frutiger-aero' && { width: 6 },
+									theme.id === 'neomorphism' && {
+										width: 8,
+										backgroundColor: '#DCE0EB',
+										borderRadius: 4,
+										borderWidth: 1,
+										borderColor: 'rgba(154, 167, 189, 0.4)',
+									},
+									theme.id === 'skeuomorphism' && {
+										width: 8,
+										backgroundColor: '#101012',
+										borderRadius: 4,
+										borderWidth: 1,
+										borderColor: 'rgba(255, 255, 255, 0.08)',
+									},
+								]}
+							>
 								<LinearGradient
 									colors={
 										theme.id === 'frutiger-aero'
 											? ['#2196F3', '#3ECB7C']
+											: theme.id === 'neomorphism'
+											? isPositive
+												? ['#FF5A5F', '#FF7E82']
+												: ['#4A5568', '#718096']
+											: theme.id === 'skeuomorphism'
+											? ['#FF9F0A', '#FFD60A']
 											: isPositive
-												? (theme.colors.accentGradient as [string, string, ...string[]])
-												: ['#FF6B6B', '#EE5A5A']
+											? (theme.colors.accentGradient as [string, string, ...string[]])
+											: ['#FF6B6B', '#EE5A5A']
 									}
 									start={{ x: 0, y: 1 }}
 									end={{ x: 0, y: 0 }}
