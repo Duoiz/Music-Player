@@ -1,15 +1,28 @@
 const express = require('express')
 const cors = require('cors')
 const https = require('https')
-const { HttpsProxyAgent } = require('https-proxy-agent')
 const { searchYouTubeMusic } = require('./services/search')
 const { extractStreamUrl } = require('./services/ytdlp')
 
 const app = express()
+app.set('trust proxy', true)
 const PORT = process.env.PORT || 3001
 
 const PROXY_URL = 'http://zdhylekl:vaigrn5oy9qu@31.59.20.176:6754'
-const proxyAgent = new HttpsProxyAgent(PROXY_URL)
+let proxyAgent = null
+
+async function getProxyAgent() {
+	if (!proxyAgent) {
+		try {
+			const mod = await import('https-proxy-agent')
+			const AgentClass = mod.HttpsProxyAgent || mod.default?.HttpsProxyAgent || mod.default
+			proxyAgent = new AgentClass(PROXY_URL)
+		} catch (err) {
+			console.error('[PROXY] Error initializing proxy agent:', err.message)
+		}
+	}
+	return proxyAgent
+}
 
 // Cache for stream URLs
 const streamUrlCache = new Map()
@@ -88,7 +101,8 @@ app.get('/api/stream/:videoId', async (req, res) => {
 		// Override streamUrl with proxy endpoint because Google strictly enforces IP-locking
 		const responseInfo = { ...streamInfo }
 		const host = req.get('host') || `localhost:${PORT}`
-		responseInfo.streamUrl = `${req.protocol}://${host}/api/proxy/${videoId}`
+		const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : req.protocol) || 'https'
+		responseInfo.streamUrl = `${protocol}://${host}/api/proxy/${videoId}`
 
 		res.json(responseInfo)
 	} catch (error) {
@@ -136,9 +150,10 @@ app.get('/api/proxy/:videoId', async (req, res) => {
 		let currentReq = null;
 		let currentRes = null;
 
-		const makeRequest = (urlToFetch) => {
+		const makeRequest = async (urlToFetch) => {
+			const agent = await getProxyAgent()
 			currentReq = https.get(urlToFetch, {
-				agent: proxyAgent,
+				agent,
 				headers: requestHeaders,
 			}, (proxyRes) => {
 				currentRes = proxyRes;

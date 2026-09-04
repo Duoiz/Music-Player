@@ -2,13 +2,11 @@ import type { Song, StreamInfo } from '../types'
 
 /**
  * Backend API base URL.
- * In development, point to your local server.
- * In production, replace with your deployed server URL.
+ * Automatically uses EXPO_PUBLIC_API_URL (e.g. from .env or Modal deployment).
+ * Falls back to local development IP.
  */
-const API_BASE_URL = 'http://192.168.31.139:3001'
-
-// For iOS simulator, use 'http://localhost:3001' instead
-// For physical device on same network, use your machine's local IP
+export const API_BASE_URL =
+	process.env.EXPO_PUBLIC_API_URL || 'https://duoiz--music-player-backend-web.modal.run'
 
 const TIMEOUT = 30000
 
