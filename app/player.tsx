@@ -20,6 +20,7 @@ import { VinylAlbumArt } from '../src/components/skeuo/VinylAlbumArt'
 import { RotaryVolumeKnob } from '../src/components/skeuo/RotaryVolumeKnob'
 import { NeumorphicPlayButton } from '../src/components/controls/NeumorphicPlayButton'
 import { NeumorphicSurface } from '../src/components/surfaces/NeumorphicSurface'
+import { GlassCylinderCarousel } from '../src/components/glass/GlassCylinderCarousel'
 import { usePlayerStore } from '../src/stores/playerStore'
 import { useHapticFeedback } from '../src/hooks/useHapticFeedback'
 import { extractImageColors } from '../src/utils/imageColors'
@@ -39,9 +40,11 @@ export default function PlayerScreen() {
 	const haptic = useHapticFeedback()
 
 	const currentTrack = usePlayerStore((s) => s.currentTrack)
+	const queue = usePlayerStore((s) => s.queue)
 	const isPlaying = usePlayerStore((s) => s.isPlaying)
 	const repeatMode = usePlayerStore((s) => s.repeatMode)
 	const shuffleEnabled = usePlayerStore((s) => s.shuffleEnabled)
+	const playTrack = usePlayerStore((s) => s.play)
 	const play = usePlayerStore((s) => s.resume)
 	const pause = usePlayerStore((s) => s.pause)
 	const next = usePlayerStore((s) => s.next)
@@ -145,8 +148,15 @@ export default function PlayerScreen() {
 
 				{/* Player Content */}
 				<View style={styles.content}>
-					{/* Album Art */}
-					{theme.id === 'skeuomorphism' || theme.id === 'neomorphism' ? (
+					{/* Album Art / 3D Cylinder / Vinyl */}
+					{theme.id === 'liquid-glass' || theme.id === 'frutiger-aero' ? (
+						<GlassCylinderCarousel
+							queue={queue}
+							currentTrack={currentTrack}
+							onSelectTrack={playTrack}
+							themeId={theme.id}
+						/>
+					) : theme.id === 'skeuomorphism' || theme.id === 'neomorphism' ? (
 						<VinylAlbumArt
 							artwork={currentTrack?.artwork}
 							isPlaying={isPlaying}

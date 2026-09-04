@@ -148,13 +148,21 @@ export default function SearchScreen() {
 					artwork: song.thumbnail,
 					duration: song.duration,
 				}
-				await play(track)
+				const searchQueue: Track[] = results.map((s: Song) => ({
+					id: s.id,
+					url: s.id === song.id ? stream.streamUrl : '',
+					title: s.title,
+					artist: s.artist,
+					artwork: s.thumbnail,
+					duration: s.duration,
+				}))
+				await play(track, searchQueue)
 			} catch (err) {
 				console.error('Error playing song:', err)
 				setError('Failed to load song. Try again.')
 			}
 		},
-		[play]
+		[play, results]
 	)
 
 	const renderHeader = () => (

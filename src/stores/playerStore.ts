@@ -16,7 +16,7 @@ interface PlayerStore {
 	shuffleEnabled: boolean
 
 	// Actions
-	play: (track?: Track) => Promise<void>
+	play: (track?: Track, newQueue?: Track[]) => Promise<void>
 	pause: () => Promise<void>
 	resume: () => Promise<void>
 	next: () => Promise<void>
@@ -65,41 +65,98 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 	repeatMode: 'off',
 	shuffleEnabled: false,
 
-	// Play a track (or resume if no track provided)
-	play: async (track) => {
+	// Play a track (or resume if no track provided), optionally setting the category queue
+	play: async (track, newQueue) => {
 		try {
 			if (track) {
+				set({ isLoading: true })
+
+				// If track.url is empty or missing, attempt to resolve from API
+				if (!track.url || typeof track.url !== 'string' || track.url.trim() === '') {
+					try {
+						const { getStreamUrl } = await import('../services/api')
+						const stream = await getStreamUrl(track.id)
+						track.url = stream.streamUrl
+					} catch (streamErr) {
+						console.warn('Cannot resolve stream URL for track:', track.id, streamErr)
+					}
+				}
+
 				if (!track.url || typeof track.url !== 'string' || track.url.trim() === '') {
 					console.warn('Cannot play track: URL is empty or invalid', track)
 					set({ isLoading: false })
 					return
 				}
 
-				set({ isLoading: true })
+				// Determine queue:
+				// If newQueue is passed and non-empty, use it.
+				// Otherwise, if existing queue already contains this track, preserve existing queue!
+				// Otherwise fallback to [track].
+				let updatedQueue = newQueue
+				if (!updatedQueue || updatedQueue.length === 0) {
+					const existingQueue = get().queue
+					if (existingQueue.some((t) => t.id === track.id)) {
+						updatedQueue = existingQueue
+					} else {
+						updatedQueue = [track]
+					}
+				}
 
-				// Reset queue and add the new track
-				await TrackPlayer.reset()
-				await TrackPlayer.add({
-					id: track.id,
-					url: track.url,
-					title: track.title,
-					artist: track.artist,
-					artwork: track.artwork,
-					duration: track.duration,
-				})
+				// Check if TrackPlayer already has this exact queue loaded
+				const validTracks = updatedQueue.filter(
+					(t) => t.url && typeof t.url === 'string' && t.url.trim() !== ''
+				)
+				const trackIndex = validTracks.findIndex((t) => t.id === track.id)
 
-				set({ currentTrack: track, queue: [track] })
+				let queueAlreadyLoaded = false
+				try {
+					const currentTPQueue = await TrackPlayer.getQueue()
+					if (
+						currentTPQueue.length === validTracks.length &&
+						currentTPQueue.length > 1 &&
+						currentTPQueue.every((t, i) => String(t.id) === String(validTracks[i].id))
+					) {
+						queueAlreadyLoaded = true
+					}
+				} catch (e) {}
+
+				if (queueAlreadyLoaded && trackIndex !== -1) {
+					await TrackPlayer.skip(trackIndex)
+				} else {
+					await TrackPlayer.reset()
+					if (validTracks.length > 1 && trackIndex !== -1) {
+						await TrackPlayer.add(
+							validTracks.map((t) => ({
+								id: t.id,
+								url: t.url,
+								title: t.title,
+								artist: t.artist,
+								artwork: t.artwork,
+								duration: t.duration,
+							}))
+						)
+						await TrackPlayer.skip(trackIndex)
+					} else {
+						await TrackPlayer.add({
+							id: track.id,
+							url: track.url,
+							title: track.title,
+							artist: track.artist,
+							artwork: track.artwork,
+							duration: track.duration,
+						})
+					}
+				}
+
+				set({ currentTrack: track, queue: updatedQueue })
 				await TrackPlayer.play()
 				set({ isPlaying: true, isLoading: false })
 
 				// Ensure equalizer settings persist to the newly loaded track/ExoPlayer session
-				// Delay needed because ExoPlayer creates a new audioSessionId which isn't
-				// immediately available after play()
 				try {
 					const { useEQStore, applyEQToPlayer } = await import('./eqStore')
 					const { bands, isEnabled } = useEQStore.getState()
 					if (isEnabled) {
-						// Wait for ExoPlayer to fully initialize the new audio session
 						await new Promise((resolve) => setTimeout(resolve, 500))
 						await applyEQToPlayer(bands, isEnabled)
 					}

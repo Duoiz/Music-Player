@@ -56,7 +56,7 @@ export interface PlayerState {
 }
 
 export interface PlayerActions {
-	play: (track?: Track) => Promise<void>
+	play: (track?: Track, newQueue?: Track[]) => Promise<void>
 	pause: () => Promise<void>
 	resume: () => Promise<void>
 	next: () => Promise<void>

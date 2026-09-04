@@ -140,7 +140,7 @@ export default function LibraryScreen() {
 						index={index}
 						isActive={currentTrack?.id === song.id}
 						onMenuAction={handleMenuAction}
-						onPress={() => play(queue[index])}
+						onPress={() => play(queue[index], queue)}
 					/>
 				))
 			)}
@@ -162,7 +162,7 @@ export default function LibraryScreen() {
 							index={index}
 							isActive={currentTrack?.id === song.id}
 							onMenuAction={handleMenuAction}
-							onPress={() => play(track)}
+							onPress={() => play(track, downloadedTracks)}
 						/>
 					)
 				})
@@ -192,7 +192,7 @@ export default function LibraryScreen() {
 									index={index}
 									isActive={currentTrack?.id === song.id}
 									onMenuAction={handleMenuAction}
-									onPress={() => play(track)}
+									onPress={() => play(track, playlist.tracks)}
 								/>
 							)
 						})
