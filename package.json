@@ -12,7 +12,6 @@
     "@expo-google-fonts/orbitron": "^0.4.2",
     "@expo-google-fonts/rajdhani": "^0.4.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
-    "@react-native-menu/menu": "^0.9.1",
     "@react-navigation/bottom-tabs": "^7.10.1",
     "expo": "^55.0.5",
     "expo-blur": "~55.0.18",
