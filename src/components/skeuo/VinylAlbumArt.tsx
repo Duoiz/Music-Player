@@ -29,7 +29,7 @@ interface VinylAlbumArtProps {
  * vinyl disc that slips out and spins continuously during playback,
  * freezing in place upon pause (true turntable physics).
  */
-export function VinylAlbumArt({
+export const VinylAlbumArt = React.memo(function VinylAlbumArt({
 	artwork,
 	isPlaying,
 	themeId = 'skeuomorphism',
@@ -143,7 +143,7 @@ export function VinylAlbumArt({
 			</View>
 		</View>
 	)
-}
+})
 
 const styles = StyleSheet.create({
 	container: {

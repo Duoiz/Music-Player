@@ -40,6 +40,9 @@ export function RotaryVolumeKnob({
 	// Map volume (0..1) to angle (-135°..+135°)
 	const angle = MIN_DEG + volume * (MAX_DEG - MIN_DEG)
 
+	const volumeThrottleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const pendingVolumeRef = useRef<number | null>(null)
+
 	const panResponder = useRef(
 		PanResponder.create({
 			onStartShouldSetPanResponder: () => true,
@@ -69,7 +72,17 @@ export function RotaryVolumeKnob({
 					if (Math.abs(dVol) > 0.0005) {
 						const nextVol = Math.min(Math.max(volumeRef.current + dVol, 0), 1)
 						volumeRef.current = nextVol
-						setVolume(nextVol)
+						pendingVolumeRef.current = nextVol
+
+						if (!volumeThrottleTimer.current) {
+							setVolume(nextVol)
+							volumeThrottleTimer.current = setTimeout(() => {
+								volumeThrottleTimer.current = null
+								if (pendingVolumeRef.current !== null) {
+									setVolume(pendingVolumeRef.current)
+								}
+							}, 50)
+						}
 
 						// Haptic detent every 10%
 						const currentStep = Math.round(nextVol * 10)
@@ -85,10 +98,20 @@ export function RotaryVolumeKnob({
 				lastAngleRef.current = currentAngle
 			},
 			onPanResponderRelease: () => {
+				if (volumeThrottleTimer.current) {
+					clearTimeout(volumeThrottleTimer.current)
+					volumeThrottleTimer.current = null
+				}
+				setVolume(volumeRef.current)
 				lastAngleRef.current = null
 				lastHapticStep.current = Math.round(volumeRef.current * 10)
 			},
 			onPanResponderTerminate: () => {
+				if (volumeThrottleTimer.current) {
+					clearTimeout(volumeThrottleTimer.current)
+					volumeThrottleTimer.current = null
+				}
+				setVolume(volumeRef.current)
 				lastAngleRef.current = null
 			},
 		})

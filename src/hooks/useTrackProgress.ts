@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import TrackPlayer, { useProgress, Event, useTrackPlayerEvents } from 'react-native-track-player'
+import { useEffect } from 'react'
+import { useProgress, Event, useTrackPlayerEvents } from 'react-native-track-player'
 import { usePlayerStore } from '../stores/playerStore'
 
 /**
@@ -10,15 +10,11 @@ import { usePlayerStore } from '../stores/playerStore'
  */
 export function useTrackProgress(updateInterval = 500) {
 	const progress = useProgress(updateInterval)
-	const setPosition = usePlayerStore((s) => s.setPosition)
-	const setDuration = usePlayerStore((s) => s.setDuration)
-	const setBuffered = usePlayerStore((s) => s.setBuffered)
+	const setProgress = usePlayerStore((s) => s.setProgress)
 
 	useEffect(() => {
-		setPosition(progress.position)
-		setDuration(progress.duration)
-		setBuffered(progress.buffered)
-	}, [progress.position, progress.duration, progress.buffered, setPosition, setDuration, setBuffered])
+		setProgress(progress.position, progress.duration, progress.buffered)
+	}, [progress.position, progress.duration, progress.buffered, setProgress])
 
 	return progress
 }

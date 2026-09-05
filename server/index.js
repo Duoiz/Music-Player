@@ -8,7 +8,7 @@ const app = express()
 app.set('trust proxy', true)
 const PORT = process.env.PORT || 3001
 
-const PROXY_URL = 'http://zdhylekl:vaigrn5oy9qu@31.59.20.176:6754'
+const PROXY_URL = process.env.PROXY_URL || 'http://zdhylekl:vaigrn5oy9qu@31.59.20.176:6754'
 let proxyAgent = null
 
 async function getProxyAgent() {
@@ -101,7 +101,8 @@ app.get('/api/stream/:videoId', async (req, res) => {
 		// Override streamUrl with proxy endpoint because Google strictly enforces IP-locking
 		const responseInfo = { ...streamInfo }
 		const host = req.get('host') || `localhost:${PORT}`
-		const protocol = req.headers['x-forwarded-proto'] || (req.secure ? 'https' : req.protocol) || 'https'
+		const isLocal = host.includes('localhost') || host.includes('127.0.0.1')
+		const protocol = req.headers['x-forwarded-proto'] || (isLocal ? (req.secure ? 'https' : req.protocol) : 'https')
 		responseInfo.streamUrl = `${protocol}://${host}/api/proxy/${videoId}`
 
 		res.json(responseInfo)
@@ -127,18 +128,14 @@ app.get('/api/proxy/:videoId', async (req, res) => {
 		}
 
 		let rangeHeader = req.headers.range;
+		const isDownload = req.query.download === 'true' || req.query.full === 'true' || req.headers['x-download'] === 'true';
 
-		// OPTIMIZATION: If the client requests the start of the file unboundedly (e.g., bytes=0-),
-		// we cap it to the first 1MB (~1 minute of 128kbps audio).
-		// This acts as a low-bandwidth "preview". If they skip the song, we only used 1MB.
-		// If they keep listening, the player will naturally request the next chunk (bytes=1048576-)
-		// which we will leave unbounded to download the rest of the song efficiently.
-		if (rangeHeader === 'bytes=0-') {
-			rangeHeader = 'bytes=0-1048575';
-		} else if (!rangeHeader) {
-			// If no range is provided, force a 1MB chunk anyway to prevent full download on tap
+		// Only apply 1MB preview cap for streaming playback when explicitly requested as unbounded stream start (bytes=0-),
+		// and NEVER for download requests or requests without a partial range!
+		if (!isDownload && rangeHeader === 'bytes=0-') {
 			rangeHeader = 'bytes=0-1048575';
 		}
+
 
 		const requestHeaders = {
 			'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',

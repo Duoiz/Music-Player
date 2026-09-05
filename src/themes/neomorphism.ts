@@ -102,4 +102,14 @@ export const neomorphism: ThemeStyle = {
 		captionSize: 12,
 		captionWeight: '500',
 	},
+	widgets: {
+		volumeControl: 'slider',
+		artworkDisplay: 'vinyl',
+		playButton: 'neumorphic-convex',
+		audioReactivity: {
+			enabled: true,
+			intensity: 'subtle',
+			target: 'scale',
+		},
+	},
 }

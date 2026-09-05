@@ -21,7 +21,7 @@ interface SongListItemProps {
  * Song row component used in search results, library, and queue.
  * Shows thumbnail, title, artist, duration, and play indicator.
  */
-export function SongListItem({
+export const SongListItem = React.memo(function SongListItem({
 	song,
 	onPress,
 	isActive = false,
@@ -30,9 +30,8 @@ export function SongListItem({
 	onMenuAction,
 }: SongListItemProps) {
 	const theme = useTheme()
-	const isDownloaded = useDownloadStore((s) => s.isDownloaded(song.id))
-	const activeDownloads = useDownloadStore((s) => s.activeDownloads)
-	const downloadProgress = activeDownloads[song.id]
+	const isDownloaded = useDownloadStore((s) => s.downloadedTracks.some((t) => t.id === song.id))
+	const downloadProgress = useDownloadStore((s) => s.activeDownloads[song.id])
 	const isDownloading = downloadProgress !== undefined
 
 	const pulseOpacity = useSharedValue(1)
@@ -306,7 +305,7 @@ export function SongListItem({
 			</View>
 		</TouchableOpacity>
 	)
-}
+})
 
 const styles = StyleSheet.create({
 	container: {

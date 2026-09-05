@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import TrackPlayer, { State, RepeatMode as TPRepeatMode } from 'react-native-track-player'
+import TrackPlayer, { RepeatMode as TPRepeatMode } from 'react-native-track-player'
 import type { Track, RepeatMode } from '../types'
 
 interface PlayerStore {
@@ -32,6 +32,7 @@ interface PlayerStore {
 	// Internal state setters (called by TrackPlayer event listeners)
 	setPosition: (position: number) => void
 	setDuration: (duration: number) => void
+	setProgress: (position: number, duration: number, buffered: number) => void
 	setIsPlaying: (isPlaying: boolean) => void
 	setIsLoading: (isLoading: boolean) => void
 	setCurrentTrack: (track: Track | null) => void
@@ -295,6 +296,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 	// Internal setters
 	setPosition: (position) => set({ position }),
 	setDuration: (duration) => set({ duration }),
+	setProgress: (position, duration, buffered) => set({ position, duration, buffered }),
 	setIsPlaying: (isPlaying) => set({ isPlaying }),
 	setIsLoading: (isLoading) => set({ isLoading }),
 	setCurrentTrack: (currentTrack) => set({ currentTrack }),

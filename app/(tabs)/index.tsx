@@ -6,6 +6,7 @@ import {
 	View,
 	FlatList,
 	ActivityIndicator,
+	Platform,
 } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withSequence } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -31,7 +32,6 @@ import type { Song, Track } from '../../src/types'
 export default function SearchScreen() {
 	const theme = useTheme()
 	const play = usePlayerStore((s) => s.play)
-	const addToQueue = usePlayerStore((s) => s.addToQueue)
 	const currentTrack = usePlayerStore((s) => s.currentTrack)
 
 	const [results, setResults] = useState<Song[]>([])
@@ -165,58 +165,8 @@ export default function SearchScreen() {
 		[play, results]
 	)
 
-	const renderHeader = () => (
-		<View style={styles.header}>
-			<Text
-				style={[
-					styles.title,
-					{
-						color: theme.colors.textPrimary,
-						fontSize: 32,
-						fontWeight: theme.typography.titleWeight,
-						fontFamily: theme.typography.fontFamily,
-						textShadowColor: theme.typography.textShadowColor,
-						textShadowOffset: theme.typography.textShadowOffset,
-						textShadowRadius: theme.typography.textShadowRadius,
-					},
-				]}
-			>
-				Discover
-			</Text>
-			<Text
-				style={[
-					styles.subtitle,
-					{
-						color: theme.colors.textSecondary,
-						fontSize: theme.typography.bodySize,
-						fontWeight: theme.typography.bodyWeight,
-						fontFamily: theme.typography.fontFamily,
-						textShadowColor: theme.typography.textShadowColor,
-						textShadowOffset: theme.typography.textShadowOffset,
-						textShadowRadius: theme.typography.textShadowRadius,
-					},
-				]}
-			>
-				Search millions of songs
-			</Text>
-
-			<View style={styles.searchContainer}>
-				<SearchBar
-					onSearch={handleSearch}
-					isLoading={isSearching}
-					placeholder="Search YouTube Music..."
-				/>
-			</View>
-
-			{/* Error message */}
-			{error && (
-				<GlassCard style={styles.errorCard} intensity="light">
-					<Text style={[styles.errorText, { color: '#FF6B6B' }]}>
-						<Ionicons name="warning" size={14} color="#FF6B6B" /> {error}
-					</Text>
-				</GlassCard>
-			)}
-
+	const renderSubHeader = () => (
+		<View style={styles.subHeader}>
 			{/* Empty state */}
 			{!hasSearched && (
 				<GlassCard style={[styles.heroCard, { overflow: 'hidden' as const }]} intensity="light">
@@ -325,10 +275,63 @@ export default function SearchScreen() {
 		>
 			<BackgroundParticles />
 			<SafeAreaView style={styles.safeArea} edges={['top']}>
+				{/* Fixed Search Header — never unmounts, preserves focus and keyboard state */}
+				<View style={styles.fixedHeader}>
+					<Text
+						style={[
+							styles.title,
+							{
+								color: theme.colors.textPrimary,
+								fontSize: 32,
+								fontWeight: theme.typography.titleWeight,
+								fontFamily: theme.typography.fontFamily,
+								textShadowColor: theme.typography.textShadowColor,
+								textShadowOffset: theme.typography.textShadowOffset,
+								textShadowRadius: theme.typography.textShadowRadius,
+							},
+						]}
+					>
+						Discover
+					</Text>
+					<Text
+						style={[
+							styles.subtitle,
+							{
+								color: theme.colors.textSecondary,
+								fontSize: theme.typography.bodySize,
+								fontWeight: theme.typography.bodyWeight,
+								fontFamily: theme.typography.fontFamily,
+								textShadowColor: theme.typography.textShadowColor,
+								textShadowOffset: theme.typography.textShadowOffset,
+								textShadowRadius: theme.typography.textShadowRadius,
+							},
+						]}
+					>
+						Search millions of songs
+					</Text>
+
+					<View style={styles.searchContainer}>
+						<SearchBar
+							onSearch={handleSearch}
+							isLoading={isSearching}
+							placeholder="Search YouTube Music..."
+						/>
+					</View>
+
+					{/* Error message */}
+					{error && (
+						<GlassCard style={styles.errorCard} intensity="light">
+							<Text style={[styles.errorText, { color: '#FF6B6B' }]}>
+								<Ionicons name="warning" size={14} color="#FF6B6B" /> {error}
+							</Text>
+						</GlassCard>
+					)}
+				</View>
+
 				<FlatList
 					data={results}
 					keyExtractor={(item) => item.id}
-					ListHeaderComponent={renderHeader}
+					ListHeaderComponent={renderSubHeader}
 					renderItem={({ item }) => (
 						<SongListItem
 							song={item}
@@ -337,11 +340,17 @@ export default function SearchScreen() {
 							onMenuAction={handleMenuAction}
 						/>
 					)}
+					initialNumToRender={10}
+					maxToRenderPerBatch={10}
+					windowSize={5}
+					removeClippedSubviews={Platform.OS === 'android'}
 					contentContainerStyle={styles.listContent}
 					showsVerticalScrollIndicator={false}
+					keyboardShouldPersistTaps="handled"
 					// Extra padding at the bottom for the tab bar + mini player
 					ListFooterComponent={<View style={{ height: 140 }} />}
 				/>
+
 
 				{/* Loading overlay */}
 				{isSearching && results.length === 0 && (
@@ -373,12 +382,17 @@ const styles = StyleSheet.create({
 	listContent: {
 		paddingHorizontal: 16,
 	},
-	header: {
+	fixedHeader: {
+		paddingHorizontal: 16,
 		paddingTop: 16,
-		paddingBottom: 8,
+		paddingBottom: 4,
 		gap: 4,
 	},
+	subHeader: {
+		paddingBottom: 8,
+	},
 	title: {
+
 		letterSpacing: -0.5,
 	},
 	subtitle: {

@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react'
 import { Ionicons } from '@expo/vector-icons'
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, ScrollView } from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useTheme } from '../../src/components/ThemeProvider'
@@ -12,7 +12,7 @@ import { usePlayerStore } from '../../src/stores/playerStore'
 import { usePlaylistStore } from '../../src/stores/playlistStore'
 import { useDownloadStore } from '../../src/stores/downloadStore'
 import { downloadSong, deleteDownloadedSong } from '../../src/services/downloadService'
-import type { Song, Track } from '../../src/types'
+import type { Song } from '../../src/types'
 
 type TabType = 'queue' | 'playlists' | 'downloads'
 
@@ -32,14 +32,18 @@ export default function LibraryScreen() {
 	const [selectedSong, setSelectedSong] = useState<Song | null>(null)
 	const [viewingPlaylistId, setViewingPlaylistId] = useState<string | null>(null)
 
-	const queueAsSongs: Song[] = queue.map((t) => ({
-		id: t.id,
-		title: t.title,
-		artist: t.artist,
-		thumbnail: t.artwork,
-		duration: t.duration,
-		videoId: '',
-	}))
+	const queueAsSongs: Song[] = React.useMemo(
+		() =>
+			queue.map((t) => ({
+				id: t.id,
+				title: t.title,
+				artist: t.artist,
+				thumbnail: t.artwork,
+				duration: t.duration,
+				videoId: '',
+			})),
+		[queue]
+	)
 
 	const handleMenuAction = useCallback((action: 'download' | 'playlist', song: Song) => {
 		if (action === 'playlist') {

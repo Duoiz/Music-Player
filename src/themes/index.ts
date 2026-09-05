@@ -7,6 +7,7 @@ import { skeuomorphism } from './skeuomorphism'
 import { midnightAero } from './midnightAero'
 import { retroWave } from './retroWave'
 import { neutralAero } from './neutralAero'
+import { steampunkChronograph } from './steampunkChronograph'
 
 /**
  * All available themes, ordered: free first, premium last.
@@ -14,8 +15,9 @@ import { neutralAero } from './neutralAero'
 export const allThemes: ThemeStyle[] = [
 	frutigerAero,
 	liquidGlass,
-	neomorphism,
+	steampunkChronograph,
 	skeuomorphism,
+	neomorphism,
 	midnightAero,
 	retroWave,
 	neutralAero,
@@ -36,6 +38,7 @@ export function getThemeById(id: string): ThemeStyle {
 export {
 	frutigerAero,
 	liquidGlass,
+	steampunkChronograph,
 	neomorphism,
 	skeuomorphism,
 	midnightAero,

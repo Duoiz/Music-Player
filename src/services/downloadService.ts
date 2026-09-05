@@ -32,15 +32,21 @@ export async function downloadSong(song: Song | Track): Promise<boolean> {
 			await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}downloads/`, { intermediates: true })
 		}
 
-		// 3. Download the file
+		// 3. Download the full file (avoiding any partial preview truncation)
+		const downloadUrl = streamInfo.streamUrl.includes('?')
+			? `${streamInfo.streamUrl}&download=true&full=true`
+			: `${streamInfo.streamUrl}?download=true&full=true`
+
 		const downloadResumable = FileSystem.createDownloadResumable(
-			streamInfo.streamUrl,
+			downloadUrl,
 			fileUri,
 			{
 				headers: {
 					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+					'x-download': 'true',
 				}
 			},
+
 			(downloadProgress) => {
 				const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite
 				store.setDownloadProgress(songId, progress)

@@ -70,6 +70,7 @@ export interface PlayerActions {
 	toggleShuffle: () => void
 	setPosition: (position: number) => void
 	setDuration: (duration: number) => void
+	setProgress?: (position: number, duration: number, buffered: number) => void
 	setIsPlaying: (isPlaying: boolean) => void
 	setIsLoading: (isLoading: boolean) => void
 	setCurrentTrack: (track: Track | null) => void
@@ -162,6 +163,25 @@ export interface ThemeTypography {
 	textShadowRadius?: number
 }
 
+export interface ThemeAudioReactivityConfig {
+	enabled: boolean
+	intensity: 'subtle' | 'dynamic' | 'rave'
+	target: 'side-pulse' | 'glow' | 'scale' | 'wobble'
+}
+
+export interface ThemeWidgetsConfig {
+	volumeControl: 'slider' | 'rotary-knob' | 'steampunk-cog' | 'minimal-pill'
+	artworkDisplay: 'glass-cylinder' | 'vinyl' | 'floating-card'
+	playButton: 'glossy-orb' | 'neumorphic-convex' | 'tactile-toggle'
+	audioReactivity?: ThemeAudioReactivityConfig
+}
+
+export interface ThemeForkLineage {
+	id: string
+	name: string
+	author: string
+}
+
 export interface ThemeStyle {
 	id: string
 	name: string
@@ -176,11 +196,76 @@ export interface ThemeStyle {
 	useBlur: boolean // whether to use BlurView
 	useInnerShadows: boolean // for neomorphism
 	useTextures: boolean // for skeuomorphism
+	isCustom?: boolean
+	createdAt?: number
+	// Componentized Widgets & Generative Audio
+	widgets?: ThemeWidgetsConfig
+	// Remix & Attribution Chain
+	forkedFrom?: ThemeForkLineage
+	// Discovery & Curation
+	isFeatured?: boolean
+	badge?: string
+	remixCount?: number
+	downloadsCount?: number
 }
+
 
 // ============================================================
 // EQ Types
 // ============================================================
+
+export type BeatPulseType =
+	// Original primary types
+	| 'acoustic-shockwave'
+	| 'perimeter-spectrum'
+	| 'radial-burst'
+	| 'neon-blades'
+	| 'side-flanks'
+	| 'spectrum-pillars'
+	| 'shockwave-arcs'
+	| 'laser-beams'
+	| 'ambient-breath'
+	| 'off'
+	// Backward-compatible aliases
+	| 'monstercat-shockwave'
+	| 'monstercat-bars'
+	| 'ncs-circle'
+	| 'ncs-edge-bars'
+	| 'monstercat-blades'
+	| 'ncs-shockwave'
+	| 'hellcat-blades'
+	| 'hellcat-flanks'
+
+export type BeatPulseColor =
+	// Original primary palettes
+	| 'cyber-violet'
+	| 'electric-cyan'
+	| 'crimson-drive'
+	| 'acid-lime'
+	| 'solar-amber'
+	| 'solar-gold'
+	| 'theme-accent'
+	| 'album-art'
+	// Backward-compatible aliases
+	| 'monstercat-purple'
+	| 'monstercat-cyan'
+	| 'monstercat-red'
+	| 'monstercat-green'
+	| 'monstercat-orange'
+	| 'hellcat-red'
+
+export type BeatPulseIntensity = 'chill' | 'dynamic' | 'beast' | 'overdrive' | 'hellcat'
+
+export type BeatPulseTrigger = 'sub-bass' | 'mid-punch' | 'full-range'
+
+export interface BeatPulseConfig {
+	enabled: boolean
+	type: BeatPulseType
+	colorMode: BeatPulseColor
+	customColor?: string
+	intensity: BeatPulseIntensity
+	trigger: BeatPulseTrigger
+}
 
 export interface EQBand {
 	frequency: number // Hz
@@ -200,6 +285,7 @@ export interface EQState {
 	activePreset: string
 	isEnabled: boolean
 	customBands: number[]
+	beatPulse: BeatPulseConfig
 }
 
 export interface EQActions {
@@ -208,6 +294,7 @@ export interface EQActions {
 	resetEQ: () => void
 	toggleEQ: () => void
 	setCustomBands: (bands: number[]) => void
+	setBeatPulseConfig: (config: Partial<BeatPulseConfig>) => void
 }
 
 // ============================================================

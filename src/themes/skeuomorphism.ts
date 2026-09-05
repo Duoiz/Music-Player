@@ -101,4 +101,14 @@ export const skeuomorphism: ThemeStyle = {
 		captionSize: 12,
 		captionWeight: '600',
 	},
+	widgets: {
+		volumeControl: 'rotary-knob',
+		artworkDisplay: 'vinyl',
+		playButton: 'tactile-toggle',
+		audioReactivity: {
+			enabled: true,
+			intensity: 'subtle',
+			target: 'scale',
+		},
+	},
 }

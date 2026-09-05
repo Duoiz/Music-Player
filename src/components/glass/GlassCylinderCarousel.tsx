@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useRef, useEffect } from 'react'
 import {
 	StyleSheet,
 	View,
@@ -18,11 +18,12 @@ import Animated, {
 	useAnimatedStyle,
 	withSpring,
 	withTiming,
-	runOnJS,
+	interpolate,
 	type SharedValue,
 } from 'react-native-reanimated'
 import type { Track } from '../../types'
 import { formatTime } from '../../utils/formatTime'
+import { AlbumBeatVisualizer } from '../AlbumBeatVisualizer'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const CARD_WIDTH = 190
@@ -43,6 +44,7 @@ interface GlassCylinderCarouselProps {
 	currentTrack: Track | null
 	onSelectTrack: (track: Track) => void
 	themeId?: string
+	artworkColor?: string
 }
 
 /**
@@ -59,7 +61,13 @@ export function GlassCylinderCarousel({
 	currentTrack,
 	onSelectTrack,
 	themeId = 'liquid-glass',
+	artworkColor,
 }: GlassCylinderCarouselProps) {
+	const [cardBox, setCardBox] = React.useState({
+		width: CARD_WIDTH,
+		height: CARD_HEIGHT,
+		borderRadius: 24,
+	})
 	// Display the real songs from the category queue in top-to-bottom order
 	const tracksList: Track[] = React.useMemo(() => {
 		if (queue && queue.length > 0) {
@@ -71,7 +79,7 @@ export function GlassCylinderCarousel({
 			const activeIdx = currentTrack ? queue.findIndex((t) => t.id === currentTrack.id) : 0
 			const validIdx = activeIdx >= 0 ? activeIdx : 0
 			let start = Math.max(0, validIdx - 4)
-			let end = Math.min(queue.length, start + 8)
+			const end = Math.min(queue.length, start + 8)
 			if (end - start < 8 && queue.length >= 8) {
 				start = Math.max(0, end - 8)
 			}
@@ -167,6 +175,14 @@ export function GlassCylinderCarousel({
 
 	const isFrutiger = themeId === 'frutiger-aero'
 
+	const activeCardColor = TRACK_COLORS[currentIndex % TRACK_COLORS.length]
+	const visualizerColor = artworkColor || activeCardColor
+
+	// Fade visualizer gracefully when dragging the 3D drum to browse tracks
+	const visualizerAnimatedStyle = useAnimatedStyle(() => ({
+		opacity: interpolate(isDraggingValue.value, [0, 1], [1, 0]),
+	}))
+
 	return (
 		<View style={styles.stage}>
 			{/* Ambient Glowing Blobs in the background — refracted through the frosted cards */}
@@ -176,6 +192,36 @@ export function GlassCylinderCarousel({
 
 			{/* 3D Scene Viewport */}
 			<View style={styles.scene} {...panResponder.panHandlers}>
+				{/* Active Front Card Audio Visualizer Anchor (Measure -> Anchor -> Scale) */}
+				<Animated.View
+					style={[
+						styles.visualizerAnchor,
+						visualizerAnimatedStyle,
+					]}
+					onLayout={(e) => {
+						const { width, height } = e.nativeEvent.layout
+						if (width > 0 && height > 0) {
+							const roundedW = Math.round(width)
+							const roundedH = Math.round(height)
+							setCardBox((prev) => {
+								if (prev.width === roundedW && prev.height === roundedH) {
+									return prev
+								}
+								return { width: roundedW, height: roundedH, borderRadius: 24 }
+							})
+						}
+					}}
+					pointerEvents="none"
+				>
+					<AlbumBeatVisualizer
+						albumWidth={cardBox.width}
+						albumHeight={cardBox.height}
+						albumBorderRadius={cardBox.borderRadius}
+						artworkColor={visualizerColor}
+						isCircle={false}
+					/>
+				</Animated.View>
+
 				{tracksList.map((track, i) => {
 					const cardColor = TRACK_COLORS[i % TRACK_COLORS.length]
 					return (
@@ -225,7 +271,7 @@ interface CylinderCardProps {
 	onPressCard: () => void
 }
 
-function CylinderCard({
+const CylinderCard = React.memo(function CylinderCard({
 	index,
 	total,
 	stepDeg,
@@ -339,7 +385,7 @@ function CylinderCard({
 			</TouchableOpacity>
 		</Animated.View>
 	)
-}
+})
 
 const styles = StyleSheet.create({
 	stage: {
@@ -379,6 +425,16 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		alignItems: 'center',
 		position: 'relative',
+		overflow: 'visible',
+	},
+	visualizerAnchor: {
+		position: 'absolute',
+		width: CARD_WIDTH,
+		height: CARD_HEIGHT,
+		justifyContent: 'center',
+		alignItems: 'center',
+		overflow: 'visible',
+		zIndex: 10,
 	},
 	cardWrapper: {
 		position: 'absolute',

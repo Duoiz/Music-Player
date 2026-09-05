@@ -102,4 +102,14 @@ export const liquidGlass: ThemeStyle = {
 		captionWeight: '400',
 		fontFamily: undefined,
 	},
+	widgets: {
+		volumeControl: 'slider',
+		artworkDisplay: 'glass-cylinder',
+		playButton: 'glossy-orb',
+		audioReactivity: {
+			enabled: true,
+			intensity: 'dynamic',
+			target: 'glow',
+		},
+	},
 }

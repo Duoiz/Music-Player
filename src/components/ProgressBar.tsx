@@ -1,6 +1,5 @@
 import React, { useCallback } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
 import { Slider } from 'react-native-awesome-slider'
 import { useSharedValue } from 'react-native-reanimated'
 import { useTheme } from './ThemeProvider'

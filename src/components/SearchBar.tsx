@@ -3,9 +3,7 @@ import { Ionicons } from '@expo/vector-icons'
 import {
 	StyleSheet,
 	TextInput,
-	View,
 	TouchableOpacity,
-	Text,
 	Animated,
 } from 'react-native'
 import { useTheme } from './ThemeProvider'
@@ -28,7 +26,6 @@ export function SearchBar({
 	const [query, setQuery] = useState('')
 	const [isFocused, setIsFocused] = useState(false)
 	const focusAnim = useRef(new Animated.Value(0)).current
-	const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
 	const handleFocus = useCallback(() => {
 		setIsFocused(true)
@@ -50,11 +47,15 @@ export function SearchBar({
 		}).start()
 	}, [focusAnim])
 
+
 	const handleChange = useCallback(
 		(text: string) => {
 			setQuery(text)
+			if (text.trim().length === 0) {
+				onSearch('')
+			}
 		},
-		[]
+		[onSearch]
 	)
 
 	const handleClear = useCallback(() => {
@@ -63,11 +64,12 @@ export function SearchBar({
 	}, [onSearch])
 
 	const handleSubmit = useCallback(() => {
-		if (debounceTimer.current) {
-			clearTimeout(debounceTimer.current)
+		const trimmed = query.trim()
+		if (trimmed.length > 0) {
+			onSearch(trimmed)
 		}
-		onSearch(query)
 	}, [query, onSearch])
+
 
 	const borderColor = focusAnim.interpolate({
 		inputRange: [0, 1],
@@ -94,7 +96,9 @@ export function SearchBar({
 				},
 			]}
 		>
-			<Ionicons name="search" size={20} color={theme.id === 'frutiger-aero' ? theme.colors.textSecondary : theme.colors.textMuted} style={styles.searchIcon} />
+			<TouchableOpacity onPress={handleSubmit} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
+				<Ionicons name="search" size={20} color={theme.id === 'frutiger-aero' ? theme.colors.textSecondary : theme.colors.textMuted} style={styles.searchIcon} />
+			</TouchableOpacity>
 			<TextInput
 				style={[
 					styles.input,
@@ -114,10 +118,15 @@ export function SearchBar({
 				returnKeyType="search"
 				autoCorrect={false}
 			/>
-			{isLoading && <Ionicons name="sync" size={18} color={theme.colors.textMuted} style={styles.loadingIcon} />}
+			{isLoading && <Ionicons name="sync" size={18} color={theme.colors.accentPrimary} style={styles.loadingIcon} />}
 			{query.length > 0 && !isLoading && (
-				<TouchableOpacity onPress={handleClear} style={styles.clearButton}>
+				<TouchableOpacity onPress={handleClear} style={styles.clearButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
 					<Ionicons name="close-circle" size={18} color={theme.colors.textMuted} />
+				</TouchableOpacity>
+			)}
+			{query.trim().length > 0 && !isLoading && (
+				<TouchableOpacity onPress={handleSubmit} style={styles.submitButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
+					<Ionicons name="arrow-forward-circle" size={24} color={theme.colors.accentPrimary} />
 				</TouchableOpacity>
 			)}
 		</Animated.View>
@@ -128,12 +137,11 @@ const styles = StyleSheet.create({
 	container: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		paddingHorizontal: 16,
+		paddingHorizontal: 14,
 		paddingVertical: 4,
 		minHeight: 48,
 	},
 	searchIcon: {
-		fontSize: 16,
 		marginRight: 10,
 	},
 	input: {
@@ -142,17 +150,17 @@ const styles = StyleSheet.create({
 		fontWeight: '400',
 	},
 	loadingIcon: {
-		fontSize: 16,
 		marginLeft: 8,
 	},
 	clearButton: {
-		padding: 6,
+		padding: 4,
 		marginLeft: 4,
 	},
-	clearIcon: {
-		fontSize: 14,
-		fontWeight: '600',
+	submitButton: {
+		padding: 4,
+		marginLeft: 4,
 	},
 })
+
 
 

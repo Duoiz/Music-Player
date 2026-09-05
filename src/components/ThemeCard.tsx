@@ -1,6 +1,6 @@
 import React from 'react'
 import { Ionicons } from '@expo/vector-icons'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from './ThemeProvider'
 import { AnimatedButton } from './AnimatedButton'
@@ -11,6 +11,7 @@ interface ThemeCardProps {
 	isActive: boolean
 	isLocked: boolean
 	onPress: () => void
+	onRemix?: () => void
 }
 
 /**
@@ -18,7 +19,7 @@ interface ThemeCardProps {
  * Shows a mini mockup of the theme colors, name, author,
  * and free/premium badge.
  */
-export function ThemeCard({ themeStyle, isActive, isLocked, onPress }: ThemeCardProps) {
+export function ThemeCard({ themeStyle, isActive, isLocked, onPress, onRemix }: ThemeCardProps) {
 	const currentTheme = useTheme()
 
 	return (
@@ -133,7 +134,20 @@ export function ThemeCard({ themeStyle, isActive, isLocked, onPress }: ThemeCard
 							</Text>
 						</View>
 					)}
+					{themeStyle.badge && (
+						<View
+							style={[
+								styles.customBadge,
+								{ backgroundColor: '#DAA52025', borderColor: '#DAA520' },
+							]}
+						>
+							<Text style={[styles.customBadgeText, { color: '#DAA520' }]}>
+								{themeStyle.badge}
+							</Text>
+						</View>
+					)}
 				</View>
+
 				<Text
 					style={[
 						styles.author,
@@ -143,6 +157,42 @@ export function ThemeCard({ themeStyle, isActive, isLocked, onPress }: ThemeCard
 				>
 					by {themeStyle.author}
 				</Text>
+
+				{/* Lineage Attribution */}
+				{themeStyle.forkedFrom && (
+					<View style={styles.lineageBadge}>
+						<Ionicons name="git-branch-outline" size={10} color={currentTheme.colors.accentPrimary} />
+						<Text
+							style={[styles.lineageText, { color: currentTheme.colors.accentPrimary }]}
+							numberOfLines={1}
+						>
+							Forked @{themeStyle.forkedFrom.author}
+						</Text>
+					</View>
+				)}
+
+				{/* Footer Actions */}
+				{onRemix && (
+					<TouchableOpacity
+						onPress={(e) => {
+							e.stopPropagation()
+							onRemix()
+						}}
+						style={[
+							styles.remixBtn,
+							{
+								backgroundColor: `${currentTheme.colors.accentPrimary}15`,
+								borderColor: `${currentTheme.colors.accentPrimary}40`,
+							},
+						]}
+						hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+					>
+						<Ionicons name="git-branch-outline" size={12} color={currentTheme.colors.accentPrimary} />
+						<Text style={[styles.remixBtnText, { color: currentTheme.colors.accentPrimary }]}>
+							Remix
+						</Text>
+					</TouchableOpacity>
+				)}
 			</View>
 
 			{/* Active indicator */}
@@ -253,6 +303,42 @@ const styles = StyleSheet.create({
 	activeIcon: {
 		color: '#FFFFFF',
 		fontSize: 12,
+		fontWeight: '700',
+	},
+	customBadge: {
+		paddingHorizontal: 5,
+		paddingVertical: 1.5,
+		borderRadius: 4,
+		borderWidth: 0.8,
+	},
+	customBadgeText: {
+		fontSize: 8,
+		fontWeight: '800',
+		letterSpacing: 0.3,
+	},
+	lineageBadge: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 3,
+		marginTop: 2,
+	},
+	lineageText: {
+		fontSize: 9,
+		fontWeight: '600',
+	},
+	remixBtn: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		alignSelf: 'flex-start',
+		gap: 4,
+		paddingHorizontal: 8,
+		paddingVertical: 3,
+		borderRadius: 6,
+		borderWidth: 1,
+		marginTop: 6,
+	},
+	remixBtnText: {
+		fontSize: 10,
 		fontWeight: '700',
 	},
 })

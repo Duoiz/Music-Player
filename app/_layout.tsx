@@ -21,6 +21,8 @@ import {
 	Rajdhani_700Bold,
 } from '@expo-google-fonts/rajdhani'
 
+import { useThemeStore } from '../src/stores/themeStore'
+
 // Prevent auto-hiding the splash screen until everything is ready
 SplashScreen.preventAutoHideAsync()
 
@@ -41,7 +43,7 @@ function TrackPlayerSyncWrapper({ children }: { children: React.ReactNode }) {
  * 1. GestureHandlerRootView (required for gesture-based components)
  * 2. ThemeProvider (provides active theme to all screens)
  * 3. TrackPlayer initialization
- * 4. Stack navigator (tabs + modal player)
+ * 4. Stack navigator (tabs + modal player + skin creator)
  */
 export default function RootLayout() {
 	const [isReady, setIsReady] = useState(false)
@@ -63,6 +65,9 @@ export default function RootLayout() {
 				if (Platform.OS === 'android' && Platform.Version >= 33) {
 					await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS)
 				}
+
+				// Load user-created custom themes from AsyncStorage
+				await useThemeStore.getState().loadCustomThemes()
 
 				const success = await setupTrackPlayer()
 				if (!success) {
@@ -101,15 +106,25 @@ export default function RootLayout() {
 					<Stack
 						screenOptions={{
 							headerShown: false,
-							animation: 'slide_from_bottom',
 						}}
 					>
-						<Stack.Screen name="(tabs)" />
+						<Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
 						<Stack.Screen
 							name="player"
 							options={{
 								presentation: 'modal',
 								animation: 'slide_from_bottom',
+								gestureEnabled: true,
+								fullScreenGestureEnabled: true,
+							}}
+						/>
+						<Stack.Screen
+							name="skin-creator"
+							options={{
+								presentation: 'modal',
+								animation: 'slide_from_bottom',
+								gestureEnabled: true,
+								fullScreenGestureEnabled: true,
 							}}
 						/>
 					</Stack>
@@ -118,6 +133,7 @@ export default function RootLayout() {
 		</GestureHandlerRootView>
 	)
 }
+
 
 const styles = StyleSheet.create({
 	root: {

@@ -18,11 +18,15 @@ import { VolumeSlider } from '../src/components/VolumeSlider'
 import { BackgroundParticles } from '../src/components/BackgroundParticles'
 import { VinylAlbumArt } from '../src/components/skeuo/VinylAlbumArt'
 import { RotaryVolumeKnob } from '../src/components/skeuo/RotaryVolumeKnob'
+import { SteampunkCogVolume } from '../src/components/skeuo/SteampunkCogVolume'
 import { NeumorphicPlayButton } from '../src/components/controls/NeumorphicPlayButton'
 import { NeumorphicSurface } from '../src/components/surfaces/NeumorphicSurface'
 import { GlassCylinderCarousel } from '../src/components/glass/GlassCylinderCarousel'
 import { usePlayerStore } from '../src/stores/playerStore'
 import { useHapticFeedback } from '../src/hooks/useHapticFeedback'
+import { useAudioReactivity } from '../src/hooks/useAudioReactivity'
+import { AlbumBeatVisualizer } from '../src/components/AlbumBeatVisualizer'
+import Animated from 'react-native-reanimated'
 import { extractImageColors } from '../src/utils/imageColors'
 import type { RepeatMode } from '../src/types'
 
@@ -55,6 +59,31 @@ export default function PlayerScreen() {
 	const [bgColors, setBgColors] = useState<string[]>(
 		theme.colors.backgroundGradient
 	)
+	const [albumBox, setAlbumBox] = useState({ width: 0, height: 0, borderRadius: 0 })
+
+	// Audio-reactive visual layer
+	const { glowAnimatedStyle, scaleAnimatedStyle } = useAudioReactivity(
+		theme.widgets?.audioReactivity
+	)
+
+	// Componentized Hardware Widget Affordances
+	const artworkWidget =
+		theme.widgets?.artworkDisplay ||
+		(theme.id === 'liquid-glass' || theme.id === 'frutiger-aero'
+			? 'glass-cylinder'
+			: theme.id === 'skeuomorphism' || theme.id === 'neomorphism'
+			? 'vinyl'
+			: 'floating-card')
+
+	const volumeWidget =
+		theme.widgets?.volumeControl ||
+		(theme.id === 'skeuomorphism' ? 'rotary-knob' : 'slider')
+
+	const buttonWidget =
+		theme.widgets?.playButton ||
+		(theme.id === 'neomorphism' || theme.id === 'skeuomorphism'
+			? 'neumorphic-convex'
+			: 'glossy-orb')
 
 	// Extract colors from album art for dynamic background (except neumorphism/skeuomorphism which require consistent chassis color)
 	useEffect(() => {
@@ -148,49 +177,98 @@ export default function PlayerScreen() {
 
 				{/* Player Content */}
 				<View style={styles.content}>
-					{/* Album Art / 3D Cylinder / Vinyl */}
-					{theme.id === 'liquid-glass' || theme.id === 'frutiger-aero' ? (
-						<GlassCylinderCarousel
-							queue={queue}
-							currentTrack={currentTrack}
-							onSelectTrack={playTrack}
-							themeId={theme.id}
-						/>
-					) : theme.id === 'skeuomorphism' || theme.id === 'neomorphism' ? (
-						<VinylAlbumArt
-							artwork={currentTrack?.artwork}
-							isPlaying={isPlaying}
-							themeId={theme.id}
-							accentColor={theme.colors.accentPrimary}
-						/>
-					) : (
-						<GlassCard style={styles.albumCard} intensity="heavy">
-							{currentTrack?.artwork ? (
-								<Image
-									source={{ uri: currentTrack.artwork }}
-									style={[
-										styles.albumArt,
-										{ borderRadius: theme.metrics.borderRadiusMedium },
-									]}
-									contentFit="cover"
-									transition={300}
+					{/* Relative Anchor Parent for Album Box */}
+					<View style={styles.albumStageContainer}>
+						{/* 1. Absolute Visualizer Layer — Sits BEHIND the Album Art */}
+						{albumBox.width > 0 && artworkWidget !== 'glass-cylinder' && (
+							<AlbumBeatVisualizer
+								albumWidth={albumBox.width}
+								albumHeight={albumBox.height}
+								albumBorderRadius={albumBox.borderRadius}
+								artworkColor={bgColors[0]}
+								isCircle={artworkWidget === 'vinyl'}
+							/>
+						)}
+
+						{/* 2. Measured Album Art Element — Sits in FRONT of the Visualizer */}
+						<View
+							onLayout={(e) => {
+								const { width, height } = e.nativeEvent.layout
+								if (width > 0 && height > 0) {
+									const radius =
+										artworkWidget === 'vinyl'
+											? Math.min(width, height) / 2
+											: theme.metrics.borderRadiusMedium
+									const roundedW = Math.round(width)
+									const roundedH = Math.round(height)
+									const roundedR = Math.round(radius)
+									setAlbumBox((prev) => {
+										if (
+											prev.width === roundedW &&
+											prev.height === roundedH &&
+											prev.borderRadius === roundedR
+										) {
+											return prev
+										}
+										return { width: roundedW, height: roundedH, borderRadius: roundedR }
+									})
+								}
+							}}
+							style={styles.albumElementBox}
+						>
+							{artworkWidget === 'glass-cylinder' ? (
+								<GlassCylinderCarousel
+									queue={queue}
+									currentTrack={currentTrack}
+									onSelectTrack={playTrack}
+									themeId={theme.id}
+									artworkColor={bgColors[0]}
+								/>
+							) : artworkWidget === 'vinyl' ? (
+								<VinylAlbumArt
+									artwork={currentTrack?.artwork}
+									isPlaying={isPlaying}
+									themeId={theme.id}
+									accentColor={theme.colors.accentPrimary}
 								/>
 							) : (
-								<LinearGradient
-									colors={theme.colors.accentGradient as [string, string, ...string[]]}
-									start={{ x: 0, y: 0 }}
-									end={{ x: 1, y: 1 }}
-									style={[
-										styles.albumArt,
-										styles.albumPlaceholder,
-										{ borderRadius: theme.metrics.borderRadiusMedium },
-									]}
+								<Animated.View
+									style={
+										theme.widgets?.audioReactivity?.target === 'scale'
+											? scaleAnimatedStyle
+											: undefined
+									}
 								>
-									<Ionicons name="musical-notes" size={80} color="rgba(255,255,255,0.8)" />
-								</LinearGradient>
+									<GlassCard style={styles.albumCard} intensity="heavy">
+										{currentTrack?.artwork ? (
+											<Image
+												source={{ uri: currentTrack.artwork }}
+												style={[
+													styles.albumArt,
+													{ borderRadius: theme.metrics.borderRadiusMedium },
+												]}
+												contentFit="cover"
+												transition={300}
+											/>
+										) : (
+											<LinearGradient
+												colors={theme.colors.accentGradient as [string, string, ...string[]]}
+												start={{ x: 0, y: 0 }}
+												end={{ x: 1, y: 1 }}
+												style={[
+													styles.albumArt,
+													styles.albumPlaceholder,
+													{ borderRadius: theme.metrics.borderRadiusMedium },
+												]}
+											>
+												<Ionicons name="musical-notes" size={80} color="rgba(255,255,255,0.8)" />
+											</LinearGradient>
+										)}
+									</GlassCard>
+								</Animated.View>
 							)}
-						</GlassCard>
-					)}
+						</View>
+					</View>
 
 					{/* Song Info */}
 					<View style={styles.songInfo}>
@@ -282,7 +360,7 @@ export default function PlayerScreen() {
 						)}
 
 						{/* Play / Pause */}
-						{theme.id === 'neomorphism' || theme.id === 'skeuomorphism' ? (
+						{buttonWidget === 'neumorphic-convex' ? (
 							<NeumorphicPlayButton
 								isPlaying={isPlaying}
 								onPress={handlePlayPause}
@@ -322,7 +400,7 @@ export default function PlayerScreen() {
 									end={{ x: 1, y: 1 }}
 									style={[
 										styles.playButtonGradient,
-										theme.id === 'frutiger-aero' && {
+										(theme.id === 'frutiger-aero' || buttonWidget === 'tactile-toggle') && {
 											borderWidth: 1.5,
 											borderColor: 'rgba(255,255,255,0.7)',
 										}
@@ -382,7 +460,13 @@ export default function PlayerScreen() {
 
 					{/* Volume */}
 					<View style={styles.volumeContainer}>
-						{theme.id === 'skeuomorphism' ? (
+						{volumeWidget === 'steampunk-cog' ? (
+							<SteampunkCogVolume
+								accentColor={theme.colors.accentPrimary}
+								themeId={theme.id}
+								audioReactive={theme.widgets?.audioReactivity}
+							/>
+						) : volumeWidget === 'rotary-knob' ? (
 							<RotaryVolumeKnob
 								accentColor={theme.colors.accentPrimary}
 								themeId={theme.id}
@@ -430,6 +514,19 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 24,
 		justifyContent: 'center',
 		gap: 20,
+	},
+	albumStageContainer: {
+		alignSelf: 'center',
+		alignItems: 'center',
+		justifyContent: 'center',
+		position: 'relative',
+		overflow: 'visible',
+	},
+	albumElementBox: {
+		alignItems: 'center',
+		justifyContent: 'center',
+		position: 'relative',
+		zIndex: 2,
 	},
 	albumCard: {
 		alignSelf: 'center',

@@ -3,22 +3,32 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { NativeModules, Platform } from 'react-native'
 import TrackPlayer from 'react-native-track-player'
-import type { EQBand } from '../types'
+import type { EQBand, BeatPulseConfig } from '../types'
 import { DEFAULT_EQ_BANDS, EQ_PRESETS, EQ_MIN_GAIN, EQ_MAX_GAIN } from '../constants/eqPresets'
 
 const { TrackPlayerModule } = NativeModules
+
+export const DEFAULT_BEAT_PULSE_CONFIG: BeatPulseConfig = {
+	enabled: true,
+	type: 'acoustic-shockwave',
+	colorMode: 'cyber-violet',
+	intensity: 'dynamic',
+	trigger: 'sub-bass',
+}
 
 interface EQStore {
 	// State
 	bands: EQBand[]
 	activePreset: string
 	isEnabled: boolean
+	beatPulse: BeatPulseConfig
 
 	// Actions
 	setBandGain: (index: number, gain: number) => void
 	applyPreset: (presetId: string) => void
 	resetEQ: () => void
 	toggleEQ: () => void
+	setBeatPulseConfig: (config: Partial<BeatPulseConfig>) => void
 }
 
 export const applyEQToPlayer = async (bands: EQBand[], enabled: boolean) => {
@@ -46,12 +56,30 @@ export const applyEQToPlayer = async (bands: EQBand[], enabled: boolean) => {
 	}
 }
 
+let eqThrottleTimer: ReturnType<typeof setTimeout> | null = null
+let pendingEQArgs: { bands: EQBand[]; enabled: boolean } | null = null
+
+export const applyEQToPlayerThrottled = (bands: EQBand[], enabled: boolean) => {
+	pendingEQArgs = { bands, enabled }
+	if (!eqThrottleTimer) {
+		applyEQToPlayer(bands, enabled)
+		eqThrottleTimer = setTimeout(() => {
+			eqThrottleTimer = null
+			if (pendingEQArgs) {
+				applyEQToPlayer(pendingEQArgs.bands, pendingEQArgs.enabled)
+				pendingEQArgs = null
+			}
+		}, 60)
+	}
+}
+
 export const useEQStore = create<EQStore>()(
 	persist(
 		(set, get) => ({
 			bands: [...DEFAULT_EQ_BANDS],
 			activePreset: 'flat',
 			isEnabled: false,
+			beatPulse: { ...DEFAULT_BEAT_PULSE_CONFIG },
 
 			setBandGain: (index, gain) => {
 				const clampedGain = Math.min(Math.max(gain, EQ_MIN_GAIN), EQ_MAX_GAIN)
@@ -60,7 +88,7 @@ export const useEQStore = create<EQStore>()(
 					newBands[index] = { ...newBands[index], gain: clampedGain }
 				}
 				set({ bands: newBands, activePreset: 'custom' })
-				applyEQToPlayer(newBands, get().isEnabled)
+				applyEQToPlayerThrottled(newBands, get().isEnabled)
 			},
 
 			applyPreset: (presetId) => {
@@ -88,6 +116,15 @@ export const useEQStore = create<EQStore>()(
 				const newState = !get().isEnabled
 				set({ isEnabled: newState })
 				applyEQToPlayer(get().bands, newState)
+			},
+
+			setBeatPulseConfig: (config) => {
+				set({
+					beatPulse: {
+						...get().beatPulse,
+						...config,
+					},
+				})
 			},
 		}),
 		{
