@@ -7,6 +7,7 @@ const cors = require('cors')
 const https = require('https')
 const { searchYouTubeMusic } = require('./services/search')
 const { extractStreamUrl } = require('./services/ytdlp')
+const { getSpectrumEnvelope } = require('./services/audioAnalysis')
 
 const app = express()
 app.set('trust proxy', true)
@@ -201,6 +202,40 @@ app.get('/api/proxy/:videoId', async (req, res) => {
 		}
 	}
 });
+
+// ============================================================
+// Spectrum Analysis — Real audio 16-band frequency envelope
+// ============================================================
+app.get('/api/spectrum/:videoId', async (req, res) => {
+	try {
+		const { videoId } = req.params
+		if (!videoId) {
+			return res.status(400).json({ error: 'Missing videoId' })
+		}
+
+		// 1. Resolve stream URL from cache or extract via yt-dlp
+		let streamUrl = null
+		const cachedStream = streamUrlCache.get(videoId)
+		if (cachedStream && Date.now() - cachedStream.timestamp < CACHE_TTL) {
+			streamUrl = cachedStream.streamUrl
+		} else {
+			const streamInfo = await extractStreamUrl(videoId)
+			streamUrl = streamInfo.streamUrl
+			streamUrlCache.set(videoId, {
+				streamUrl,
+				metadata: streamInfo.metadata,
+				timestamp: Date.now(),
+			})
+		}
+
+		// 2. Compute or retrieve cached spectrum envelope
+		const spectrum = await getSpectrumEnvelope(videoId, streamUrl)
+		res.json(spectrum)
+	} catch (error) {
+		console.error('[SPECTRUM] Analysis error:', error.message)
+		res.status(500).json({ error: 'Failed to analyze audio spectrum: ' + error.message })
+	}
+})
 
 // ============================================================
 // Themes — UGC themes (hardcoded for MVP)

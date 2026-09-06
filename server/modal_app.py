@@ -17,7 +17,7 @@ server_image = (
         "apt-get install -y nodejs",
         "ln -sf $(which python3) /usr/local/bin/python",
     )
-    .pip_install("yt-dlp")
+    .pip_install("yt-dlp", "numpy")
     .add_local_dir(
         SERVER_DIR,
         remote_path="/root/server",

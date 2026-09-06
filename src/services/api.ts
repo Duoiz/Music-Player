@@ -1,4 +1,4 @@
-import type { Song, StreamInfo } from '../types'
+import type { Song, StreamInfo, SpectrumEnvelope } from '../types'
 
 /**
  * Backend API base URL.
@@ -168,6 +168,46 @@ export async function getStreamUrl(videoId: string): Promise<StreamInfo> {
 
 	inFlightStreams.set(videoId, streamPromise)
 	return streamPromise
+}
+
+// ============================================================
+// Real-time Audio Spectrum Envelope
+// ============================================================
+
+const spectrumCache = new Map<string, CacheEntry<SpectrumEnvelope>>()
+const inFlightSpectrum = new Map<string, Promise<SpectrumEnvelope>>()
+
+/**
+ * Fetch pre-computed 16-band audio spectrum envelope for a song.
+ * Cached in memory and deduplicated during flight.
+ */
+export async function getSpectrumData(videoId: string): Promise<SpectrumEnvelope> {
+	if (!videoId) {
+		throw new Error('Missing videoId')
+	}
+
+	const cached = spectrumCache.get(videoId)
+	if (cached && Date.now() - cached.timestamp < STREAM_CACHE_TTL) {
+		return cached.data
+	}
+
+	const inFlight = inFlightSpectrum.get(videoId)
+	if (inFlight) {
+		return inFlight
+	}
+
+	const spectrumPromise = (async () => {
+		try {
+			const data = await apiFetch<SpectrumEnvelope>(`/api/spectrum/${videoId}`)
+			setWithEviction(spectrumCache, videoId, { data, timestamp: Date.now() }, MAX_CACHE_ENTRIES)
+			return data
+		} finally {
+			inFlightSpectrum.delete(videoId)
+		}
+	})()
+
+	inFlightSpectrum.set(videoId, spectrumPromise)
+	return spectrumPromise
 }
 
 // ============================================================

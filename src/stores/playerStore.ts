@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import TrackPlayer, { RepeatMode as TPRepeatMode } from 'react-native-track-player'
 import type { Track, RepeatMode } from '../types'
+import { useSpectrumStore } from './spectrumStore'
 
 interface PlayerStore {
 	// State
@@ -71,6 +72,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 		try {
 			if (track) {
 				set({ isLoading: true })
+				// Trigger background spectrum analysis/load in parallel with stream buffering
+				useSpectrumStore.getState().loadSpectrum(track.id).catch(() => {})
 
 				// If track.url is empty or missing, attempt to resolve from API
 				if (!track.url || typeof track.url !== 'string' || track.url.trim() === '') {

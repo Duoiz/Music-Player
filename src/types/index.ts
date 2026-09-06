@@ -36,6 +36,22 @@ export interface StreamInfo {
 	}
 }
 
+export interface SpectrumEnvelope {
+	fps: number
+	bands: number
+	duration: number
+	totalFrames: number
+	envelope: string // Base64 encoded uint8 array
+}
+
+export interface DecodedSpectrum {
+	fps: number
+	bands: number
+	duration: number
+	totalFrames: number
+	data: Uint8Array
+}
+
 // ============================================================
 // Player Types
 // ============================================================
