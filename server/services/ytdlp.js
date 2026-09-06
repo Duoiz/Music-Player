@@ -1,9 +1,17 @@
+const path = require('path')
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') })
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') })
+
 const { exec } = require('child_process')
 const { promisify } = require('util')
 const execAsync = promisify(exec)
 
-const PROXY_URL = 'http://zdhylekl:vaigrn5oy9qu@31.59.20.176:6754'
-const proxyArg = `--proxy "${PROXY_URL}" --extractor-args "youtube:player_client=android"`
+function getProxyArg() {
+	const proxyUrl = process.env.WEBSHARE_PROXY_URL || process.env.PROXY_URL
+	return proxyUrl
+		? `--proxy "${proxyUrl}" --extractor-args "youtube:player_client=android"`
+		: '--extractor-args "youtube:player_client=android"'
+}
 
 /**
  * Extract the direct audio stream URL from a YouTube video using yt-dlp.
@@ -13,6 +21,7 @@ const proxyArg = `--proxy "${PROXY_URL}" --extractor-args "youtube:player_client
  */
 async function extractStreamUrl(videoId) {
 	const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`
+	const proxyArg = getProxyArg()
 
 	try {
 		// Extract the best audio-only URL using yt-dlp

@@ -31,6 +31,7 @@ server_image = (
     image=server_image,
     timeout=600,
     scaledown_window=300,
+    secrets=[modal.Secret.from_name("webshare-proxy")],
 )
 @modal.web_server(port=3001, startup_timeout=120)
 def web():

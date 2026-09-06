@@ -9,6 +9,7 @@
 	},
 	"dependencies": {
 		"cors": "^2.8.5",
+		"dotenv": "^17.4.2",
 		"express": "^4.21.0",
 		"https-proxy-agent": "^9.1.0",
 		"yt-dlp-exec": "^1.0.2",

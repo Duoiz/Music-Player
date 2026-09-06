@@ -1,3 +1,7 @@
+const path = require('path')
+require('dotenv').config({ path: path.resolve(__dirname, '.env') })
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') })
+
 const express = require('express')
 const cors = require('cors')
 const https = require('https')
@@ -8,10 +12,11 @@ const app = express()
 app.set('trust proxy', true)
 const PORT = process.env.PORT || 3001
 
-const PROXY_URL = process.env.PROXY_URL || 'http://zdhylekl:vaigrn5oy9qu@31.59.20.176:6754'
+const PROXY_URL = process.env.WEBSHARE_PROXY_URL || process.env.PROXY_URL || ''
 let proxyAgent = null
 
 async function getProxyAgent() {
+	if (!PROXY_URL) return undefined
 	if (!proxyAgent) {
 		try {
 			const mod = await import('https-proxy-agent')
