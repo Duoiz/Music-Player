@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect } from 'react'
 import { StyleSheet, View, StyleProp, ViewStyle } from 'react-native'
 import Animated, {
 	useAnimatedStyle,
@@ -8,7 +8,10 @@ import Animated, {
 import { useTheme } from './ThemeProvider'
 import { useBeatPulseReactivity } from '../hooks/useBeatPulseReactivity'
 import { getBeatPulsePalette } from './SideBeatPulse'
-import type { BeatPulseConfig } from '../types'
+import { SpectrumVisualizer } from './SpectrumVisualizer'
+import { useAlbumGeometry, AlbumGeometry } from '../hooks/useAlbumGeometry'
+import { useSpectrumData } from '../hooks/useSpectrumData'
+import type { BeatPulseConfig, VisualizerMode } from '../types'
 
 export interface AlbumBeatVisualizerProps {
 	albumWidth: number
@@ -20,6 +23,7 @@ export interface AlbumBeatVisualizerProps {
 	style?: StyleProp<ViewStyle>
 	// Backwards compatibility fallback prop
 	size?: number
+	albumGeometry?: AlbumGeometry
 }
 
 // 32 radial bars for dense, buttery smooth 60fps circular audio spectrum
@@ -240,6 +244,7 @@ export const AlbumBeatVisualizer = React.memo(function AlbumBeatVisualizer({
 	isCircle = false,
 	overrideConfig,
 	style,
+	albumGeometry,
 }: AlbumBeatVisualizerProps) {
 	const theme = useTheme()
 	const {
@@ -268,6 +273,34 @@ export const AlbumBeatVisualizer = React.memo(function AlbumBeatVisualizer({
 		: propRadius !== undefined
 		? propRadius
 		: Math.min(targetWidth * 0.08, 20)
+
+	const internalGeometry = useAlbumGeometry(targetWidth, targetHeight, effectiveBorderRadius)
+	const effectiveGeometry = albumGeometry || internalGeometry
+
+	useEffect(() => {
+		if (!albumGeometry && targetWidth > 0 && targetHeight > 0) {
+			internalGeometry.setGeometry(targetWidth, targetHeight, effectiveBorderRadius)
+		}
+	}, [albumGeometry, targetWidth, targetHeight, effectiveBorderRadius, internalGeometry])
+
+	const { magnitudes } = useSpectrumData(config.barCount || 36, overrideConfig)
+
+	const isSkiaMode =
+		config.type === 'radial' ||
+		config.type === 'circle' ||
+		config.type === 'linear-upper' ||
+		config.type === 'linear-full' ||
+		config.type === 'radial-burst' ||
+		config.type === 'ncs-circle'
+
+	const resolvedSkiaMode: VisualizerMode =
+		config.type === 'circle' || config.type === 'ncs-circle'
+			? 'circle'
+			: config.type === 'linear-upper'
+			? 'linear-upper'
+			: config.type === 'linear-full'
+			? 'linear-full'
+			: 'radial'
 
 	// Proportional sizing relative to album dimensions
 	const barWidth = Math.max(3.5, Math.min(6, targetWidth * 0.016))
@@ -434,10 +467,27 @@ export const AlbumBeatVisualizer = React.memo(function AlbumBeatVisualizer({
 				</>
 			)}
 
-			{/* 2. RADIAL BURST (360-Degree Radiating Bars) */}
-			{(config.type === 'radial-burst' ||
-				config.type === 'ncs-circle' ||
-				config.type === 'hellcat-flanks') && (
+			{/* 2. SKIA 4-MODE SPECTRUM VISUALIZER (Radial, Circle, Linear Upper, Linear Full) */}
+			{isSkiaMode && (
+				<SpectrumVisualizer
+					mode={resolvedSkiaMode}
+					albumGeometry={effectiveGeometry}
+					magnitudes={magnitudes}
+					barCount={config.barCount || 36}
+					sizeScale={config.sizeScale || 1.0}
+					color={palette.primary}
+					glowColor={palette.flare || palette.primary}
+					canvasWidth={targetWidth + 140}
+					canvasHeight={targetHeight + 140}
+					style={{
+						left: -70,
+						top: -70,
+					}}
+				/>
+			)}
+
+			{/* Legacy fallback if hellcat-flanks */}
+			{config.type === 'hellcat-flanks' && (
 				<>
 					{/* Outer Bloom */}
 					<Animated.View

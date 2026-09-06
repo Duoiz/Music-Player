@@ -26,6 +26,7 @@ import { usePlayerStore } from '../src/stores/playerStore'
 import { useHapticFeedback } from '../src/hooks/useHapticFeedback'
 import { useAudioReactivity } from '../src/hooks/useAudioReactivity'
 import { AlbumBeatVisualizer } from '../src/components/AlbumBeatVisualizer'
+import { useAlbumGeometry } from '../src/hooks/useAlbumGeometry'
 import Animated from 'react-native-reanimated'
 import { extractImageColors } from '../src/utils/imageColors'
 import type { RepeatMode } from '../src/types'
@@ -60,6 +61,7 @@ export default function PlayerScreen() {
 		theme.colors.backgroundGradient
 	)
 	const [albumBox, setAlbumBox] = useState({ width: 0, height: 0, borderRadius: 0 })
+	const albumGeometry = useAlbumGeometry()
 
 	// Audio-reactive visual layer
 	const { glowAnimatedStyle, scaleAnimatedStyle } = useAudioReactivity(
@@ -182,6 +184,7 @@ export default function PlayerScreen() {
 						{/* 1. Absolute Visualizer Layer — Sits BEHIND the Album Art */}
 						{albumBox.width > 0 && artworkWidget !== 'glass-cylinder' && (
 							<AlbumBeatVisualizer
+								albumGeometry={albumGeometry}
 								albumWidth={albumBox.width}
 								albumHeight={albumBox.height}
 								albumBorderRadius={albumBox.borderRadius}
@@ -199,6 +202,7 @@ export default function PlayerScreen() {
 										artworkWidget === 'vinyl'
 											? Math.min(width, height) / 2
 											: theme.metrics.borderRadiusMedium
+									albumGeometry.onAlbumLayout(e, radius)
 									const roundedW = Math.round(width)
 									const roundedH = Math.round(height)
 									const roundedR = Math.round(radius)

@@ -9,6 +9,7 @@ import { GlassCard } from '../../src/components/GlassCard'
 import { EQVisualizer } from '../../src/components/EQVisualizer'
 import { BackgroundParticles } from '../../src/components/BackgroundParticles'
 import { AlbumBeatVisualizer } from '../../src/components/AlbumBeatVisualizer'
+import { useAlbumGeometry } from '../../src/hooks/useAlbumGeometry'
 import { useEQStore } from '../../src/stores/eqStore'
 import { usePlayerStore } from '../../src/stores/playerStore'
 import { useHapticFeedback } from '../../src/hooks/useHapticFeedback'
@@ -21,22 +22,34 @@ import type {
 
 const PULSE_STYLES: { id: BeatPulseType; label: string; desc: string; icon: any }[] = [
 	{
+		id: 'radial',
+		label: 'Radial Burst',
+		desc: '360° radiating Skia spectrum bars synced to album edge',
+		icon: 'radio-button-on',
+	},
+	{
+		id: 'circle',
+		label: 'Circle Core',
+		desc: 'Concentric circle spectrum with high-res spikes',
+		icon: 'disc',
+	},
+	{
+		id: 'linear-upper',
+		label: 'Linear Upper',
+		desc: 'Monstercat-style upward rising equalizer spectrum',
+		icon: 'stats-chart',
+	},
+	{
+		id: 'linear-full',
+		label: 'Linear Mirrored',
+		desc: 'Symmetrical mirrored dual-sided equalizer spectrum',
+		icon: 'swap-vertical',
+	},
+	{
 		id: 'acoustic-shockwave',
 		label: 'Acoustic Shockwave',
 		desc: 'Proportional concentric ripples scaling with album size',
 		icon: 'radio',
-	},
-	{
-		id: 'perimeter-spectrum',
-		label: 'Perimeter Spectrum',
-		desc: 'Dense perimeter equalizer bars bursting outward',
-		icon: 'barcode-outline',
-	},
-	{
-		id: 'radial-burst',
-		label: 'Radial Burst',
-		desc: 'Dynamic 360° radiating circle spectrum bars',
-		icon: 'radio-button-on',
 	},
 	{
 		id: 'neon-blades',
@@ -71,6 +84,7 @@ export default function EqualizerScreen() {
 	const beatPulse = useEQStore((s) => s.beatPulse)
 	const setBeatPulseConfig = useEQStore((s) => s.setBeatPulseConfig)
 	const [previewAlbumBox, setPreviewAlbumBox] = useState({ width: 0, height: 0, borderRadius: 0 })
+	const previewGeometry = useAlbumGeometry()
 
 	const handleTogglePulse = useCallback(() => {
 		haptic.medium()
@@ -105,6 +119,22 @@ export default function EqualizerScreen() {
 		(trigger: BeatPulseTrigger) => {
 			haptic.selection()
 			setBeatPulseConfig({ trigger })
+		},
+		[setBeatPulseConfig, haptic]
+	)
+
+	const handleSelectSize = useCallback(
+		(sizeScale: number) => {
+			haptic.selection()
+			setBeatPulseConfig({ sizeScale })
+		},
+		[setBeatPulseConfig, haptic]
+	)
+
+	const handleSelectBarCount = useCallback(
+		(barCount: number) => {
+			haptic.selection()
+			setBeatPulseConfig({ barCount })
 		},
 		[setBeatPulseConfig, haptic]
 	)
@@ -215,7 +245,7 @@ export default function EqualizerScreen() {
 										? {
 												backgroundColor: isDarkPanel ? '#00c8ff' : theme.colors.accentPrimary,
 												borderColor: isDarkPanel ? '#40ffd0' : theme.colors.accentPrimary,
-										  }
+										}
 										: {
 												backgroundColor: isDarkPanel
 													? 'rgba(255, 255, 255, 0.12)'
@@ -223,7 +253,7 @@ export default function EqualizerScreen() {
 												borderColor: isDarkPanel
 													? 'rgba(255, 255, 255, 0.3)'
 													: theme.colors.divider,
-										  },
+										},
 								]}
 							>
 								<Text
@@ -253,10 +283,11 @@ export default function EqualizerScreen() {
 										{/* 1. Absolute Visualizer Layer — Sits BEHIND the Album Art */}
 										{previewAlbumBox.width > 0 && (
 											<AlbumBeatVisualizer
+												albumGeometry={previewGeometry}
 												albumWidth={previewAlbumBox.width}
 												albumHeight={previewAlbumBox.height}
 												albumBorderRadius={previewAlbumBox.borderRadius}
-												isCircle={beatPulse.type === 'radial-burst' || beatPulse.type === 'ncs-circle'}
+												isCircle={beatPulse.type === 'radial' || beatPulse.type === 'circle' || beatPulse.type === 'radial-burst' || beatPulse.type === 'ncs-circle'}
 											/>
 										)}
 
@@ -265,8 +296,9 @@ export default function EqualizerScreen() {
 											onLayout={(e) => {
 												const { width, height } = e.nativeEvent.layout
 												if (width > 0 && height > 0) {
-													const isCircleMode = beatPulse.type === 'radial-burst' || beatPulse.type === 'ncs-circle'
+													const isCircleMode = beatPulse.type === 'radial' || beatPulse.type === 'circle' || beatPulse.type === 'radial-burst' || beatPulse.type === 'ncs-circle'
 													const radius = isCircleMode ? width / 2 : 16
+													previewGeometry.onAlbumLayout(e, radius)
 													const roundedW = Math.round(width)
 													const roundedH = Math.round(height)
 													const roundedR = Math.round(radius)
@@ -284,7 +316,7 @@ export default function EqualizerScreen() {
 											}}
 											style={[
 												styles.previewAlbumCover,
-												(beatPulse.type === 'radial-burst' || beatPulse.type === 'ncs-circle') && { borderRadius: 55 },
+												(beatPulse.type === 'radial' || beatPulse.type === 'circle' || beatPulse.type === 'radial-burst' || beatPulse.type === 'ncs-circle') && { borderRadius: 55 },
 											]}
 										>
 											{currentTrack?.artwork ? (
@@ -326,13 +358,11 @@ export default function EqualizerScreen() {
 									{PULSE_STYLES.map((st) => {
 										const isSelected =
 											beatPulse.type === st.id ||
+											(st.id === 'radial' && (beatPulse.type === 'radial-burst' || beatPulse.type === 'perimeter-spectrum')) ||
+											(st.id === 'circle' && beatPulse.type === 'ncs-circle') ||
 											(st.id === 'acoustic-shockwave' &&
 												(beatPulse.type === 'monstercat-shockwave' ||
 													beatPulse.type === 'ncs-shockwave')) ||
-											(st.id === 'perimeter-spectrum' &&
-												(beatPulse.type === 'monstercat-bars' ||
-													beatPulse.type === 'ncs-edge-bars')) ||
-											(st.id === 'radial-burst' && beatPulse.type === 'ncs-circle') ||
 											(st.id === 'neon-blades' &&
 												(beatPulse.type === 'monstercat-blades' ||
 													beatPulse.type === 'hellcat-blades'))
@@ -621,6 +651,122 @@ export default function EqualizerScreen() {
 													]}
 												>
 													{trig.label}
+												</Text>
+											</TouchableOpacity>
+										)
+									})}
+								</View>
+
+								{/* 5. Spectrum Sizing */}
+								<Text
+									style={[
+										styles.subSectionLabel,
+										{ color: isDarkPanel ? '#7AE3FF' : theme.colors.textPrimary },
+									]}
+								>
+									VISUALIZER SIZE SCALE
+								</Text>
+								<View style={styles.segmentedRow}>
+									{[0.6, 0.8, 1.0, 1.2, 1.4].map((scale) => {
+										const isSelected = Math.abs((beatPulse.sizeScale || 1.0) - scale) < 0.05
+										return (
+											<TouchableOpacity
+												key={scale}
+												onPress={() => handleSelectSize(scale)}
+												style={[
+													styles.segmentBtn,
+													{
+														backgroundColor: isSelected
+															? isDarkPanel
+																? '#00c8ff'
+																: theme.colors.accentPrimary
+															: isDarkPanel
+															? 'rgba(12, 48, 78, 0.75)'
+															: theme.colors.controlBackground,
+														borderColor: isSelected
+															? isDarkPanel
+																? '#40ffd0'
+																: theme.colors.accentPrimary
+															: isDarkPanel
+															? 'rgba(120, 200, 255, 0.28)'
+															: theme.colors.divider,
+													},
+												]}
+											>
+												<Text
+													style={[
+														styles.segmentBtnText,
+														{
+															color: isSelected
+																? isDarkPanel
+																	? '#002B48'
+																	: '#FFFFFF'
+																: isDarkPanel
+																? 'rgba(215, 240, 255, 0.9)'
+																: theme.colors.textSecondary,
+															fontWeight: isSelected ? '700' : '500',
+														},
+													]}
+												>
+													{scale}x
+												</Text>
+											</TouchableOpacity>
+										)
+									})}
+								</View>
+
+								{/* 6. Spectrum Bar Density */}
+								<Text
+									style={[
+										styles.subSectionLabel,
+										{ color: isDarkPanel ? '#7AE3FF' : theme.colors.textPrimary },
+									]}
+								>
+									BAR DENSITY
+								</Text>
+								<View style={styles.segmentedRow}>
+									{[16, 24, 36, 48, 64].map((count) => {
+										const isSelected = (beatPulse.barCount || 36) === count
+										return (
+											<TouchableOpacity
+												key={count}
+												onPress={() => handleSelectBarCount(count)}
+												style={[
+													styles.segmentBtn,
+													{
+														backgroundColor: isSelected
+															? isDarkPanel
+																? '#00c8ff'
+																: theme.colors.accentPrimary
+															: isDarkPanel
+															? 'rgba(12, 48, 78, 0.75)'
+															: theme.colors.controlBackground,
+														borderColor: isSelected
+															? isDarkPanel
+																? '#40ffd0'
+																: theme.colors.accentPrimary
+															: isDarkPanel
+															? 'rgba(120, 200, 255, 0.28)'
+															: theme.colors.divider,
+													},
+												]}
+											>
+												<Text
+													style={[
+														styles.segmentBtnText,
+														{
+															color: isSelected
+																? isDarkPanel
+																	? '#002B48'
+																	: '#FFFFFF'
+																: isDarkPanel
+																? 'rgba(215, 240, 255, 0.9)'
+																: theme.colors.textSecondary,
+															fontWeight: isSelected ? '700' : '500',
+														},
+													]}
+												>
+													{count}
 												</Text>
 											</TouchableOpacity>
 										)

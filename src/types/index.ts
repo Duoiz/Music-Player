@@ -214,7 +214,14 @@ export interface ThemeStyle {
 // EQ Types
 // ============================================================
 
+export type VisualizerMode = 'radial' | 'circle' | 'linear-upper' | 'linear-full'
+
 export type BeatPulseType =
+	// Skia 4-Mode Spectrum Visualizer Modes
+	| 'radial'
+	| 'circle'
+	| 'linear-upper'
+	| 'linear-full'
 	// Original primary types
 	| 'acoustic-shockwave'
 	| 'perimeter-spectrum'
@@ -265,6 +272,9 @@ export interface BeatPulseConfig {
 	customColor?: string
 	intensity: BeatPulseIntensity
 	trigger: BeatPulseTrigger
+	visualizerMode?: VisualizerMode
+	sizeScale?: number
+	barCount?: number
 }
 
 export interface EQBand {

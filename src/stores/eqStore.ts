@@ -10,10 +10,13 @@ const { TrackPlayerModule } = NativeModules
 
 export const DEFAULT_BEAT_PULSE_CONFIG: BeatPulseConfig = {
 	enabled: true,
-	type: 'acoustic-shockwave',
+	type: 'radial',
 	colorMode: 'cyber-violet',
 	intensity: 'dynamic',
 	trigger: 'sub-bass',
+	visualizerMode: 'radial',
+	sizeScale: 1.0,
+	barCount: 36,
 }
 
 interface EQStore {
