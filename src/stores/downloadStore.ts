@@ -62,3 +62,20 @@ export const useDownloadStore = create<DownloadStore>()(
 		}
 	)
 )
+
+// O(1) "is this id downloaded?" lookup. The Set is rebuilt only when the
+// downloadedTracks array reference changes, so hundreds of list rows can each
+// subscribe without every row scanning the array on every store update.
+const downloadedIdCache = new WeakMap<DownloadedTrack[], Set<string>>()
+
+export function selectIsDownloaded(
+	state: { downloadedTracks: DownloadedTrack[] },
+	id: string
+): boolean {
+	let ids = downloadedIdCache.get(state.downloadedTracks)
+	if (!ids) {
+		ids = new Set(state.downloadedTracks.map((t) => t.id))
+		downloadedIdCache.set(state.downloadedTracks, ids)
+	}
+	return ids.has(id)
+}

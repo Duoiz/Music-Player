@@ -1,12 +1,23 @@
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useRef } from 'react'
 import { Ionicons } from '@expo/vector-icons'
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native'
+import {
+	StyleSheet,
+	Text,
+	View,
+	TouchableOpacity,
+	FlatList,
+	TextInput,
+	ActivityIndicator,
+	Platform,
+	type GestureResponderEvent,
+	type LayoutChangeEvent,
+} from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useTheme } from '../../src/components/ThemeProvider'
 import { GlassCard } from '../../src/components/GlassCard'
 import { BackgroundParticles } from '../../src/components/BackgroundParticles'
-import { SongListItem } from '../../src/components/SongListItem'
+import { SongListItem, SONG_ROW_HEIGHT } from '../../src/components/SongListItem'
 import { PlaylistModal } from '../../src/components/PlaylistModal'
 import { AutoPlaylistModal } from '../../src/components/AutoPlaylistModal'
 import { usePlayerStore } from '../../src/stores/playerStore'
@@ -19,11 +30,202 @@ import type { Song, Track } from '../../src/types'
 
 type TabType = 'device' | 'downloads' | 'playlists' | 'queue'
 
+const TABS: { id: TabType; label: string }[] = [
+	{ id: 'device', label: 'Device' },
+	{ id: 'downloads', label: 'Downloads' },
+	{ id: 'playlists', label: 'Playlists' },
+	{ id: 'queue', label: 'Queue' },
+]
+
+const RAIL_LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')]
+/** Only show the A–Z jump rail when the list is long enough to need it. */
+const RAIL_MIN_TRACKS = 30
+
+const toSong = (track: Track): Song => ({
+	...track,
+	videoId: track.id,
+	thumbnail: track.artwork || '',
+})
+
+const letterOf = (title: string): string => {
+	const c = title.trim().charAt(0).toUpperCase()
+	return c >= 'A' && c <= 'Z' ? c : '#'
+}
+
+const shuffleCopy = <T,>(items: T[]): T[] => {
+	const copy = items.slice()
+	for (let i = copy.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1))
+		;[copy[i], copy[j]] = [copy[j], copy[i]]
+	}
+	return copy
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Virtualized track list                                                     */
+/* -------------------------------------------------------------------------- */
+
+interface TrackListProps {
+	tracks: Track[]
+	showIndex?: boolean
+	empty: React.ReactElement
+	listRef?: React.Ref<FlatList<Song>>
+	onMenuAction: (action: 'download' | 'playlist', song: Song) => void
+}
+
+const getItemLayout = (_: unknown, index: number) => ({
+	length: SONG_ROW_HEIGHT,
+	offset: SONG_ROW_HEIGHT * index,
+	index,
+})
+
+/**
+ * Windowed list of songs. Only the rows near the viewport are mounted, so a
+ * library with thousands of tracks opens instantly (the old ScrollView + map
+ * mounted every row up-front).
+ */
+const TrackList = React.memo(function TrackList({
+	tracks,
+	showIndex = false,
+	empty,
+	listRef,
+	onMenuAction,
+}: TrackListProps) {
+	const play = usePlayerStore((s) => s.play)
+	const currentId = usePlayerStore((s) => s.currentTrack?.id)
+
+	const songs = useMemo(() => tracks.map(toSong), [tracks])
+
+	const handlePress = useCallback(
+		(song: Song) => {
+			const track = tracks.find((t) => t.id === song.id)
+			if (track) play(track, tracks)
+		},
+		[tracks, play]
+	)
+
+	const renderItem = useCallback(
+		({ item, index }: { item: Song; index: number }) => (
+			<SongListItem
+				song={item}
+				index={showIndex ? index : undefined}
+				isActive={currentId === item.id}
+				onMenuAction={onMenuAction}
+				onPress={handlePress}
+			/>
+		),
+		[showIndex, currentId, onMenuAction, handlePress]
+	)
+
+	const keyExtractor = useCallback(
+		(item: Song, index: number) => (showIndex ? `${item.id}-${index}` : item.id),
+		[showIndex]
+	)
+
+	return (
+		<FlatList
+			ref={listRef}
+			data={songs}
+			extraData={currentId}
+			renderItem={renderItem}
+			keyExtractor={keyExtractor}
+			getItemLayout={getItemLayout}
+			initialNumToRender={14}
+			maxToRenderPerBatch={10}
+			updateCellsBatchingPeriod={40}
+			windowSize={7}
+			removeClippedSubviews={Platform.OS === 'android'}
+			ListEmptyComponent={empty}
+			contentContainerStyle={styles.listContent}
+			showsVerticalScrollIndicator={false}
+			keyboardShouldPersistTaps="handled"
+		/>
+	)
+})
+
+/* -------------------------------------------------------------------------- */
+/*  A–Z jump rail                                                              */
+/* -------------------------------------------------------------------------- */
+
+interface AlphaRailProps {
+	available: Set<string>
+	onSelect: (letter: string) => void
+	color: string
+	dimColor: string
+	bubbleBackground: string
+	bubbleColor: string
+}
+
+/** Touch/drag strip on the right edge that jumps the list to a letter. */
+function AlphaRail({ available, onSelect, color, dimColor, bubbleBackground, bubbleColor }: AlphaRailProps) {
+	const [height, setHeight] = useState(0)
+	const [active, setActive] = useState<string | null>(null)
+	const lastLetter = useRef<string | null>(null)
+
+	const handleTouch = useCallback(
+		(e: GestureResponderEvent) => {
+			if (height <= 0) return
+			const y = Math.min(Math.max(e.nativeEvent.locationY, 0), height - 1)
+			const letter = RAIL_LETTERS[Math.floor((y / height) * RAIL_LETTERS.length)]
+			if (letter !== lastLetter.current) {
+				lastLetter.current = letter
+				setActive(letter)
+				onSelect(letter)
+			}
+		},
+		[height, onSelect]
+	)
+
+	const handleRelease = useCallback(() => {
+		lastLetter.current = null
+		setActive(null)
+	}, [])
+
+	return (
+		<>
+			{active && (
+				<View pointerEvents="none" style={styles.railBubbleWrap}>
+					<View style={[styles.railBubble, { backgroundColor: bubbleBackground }]}>
+						<Text style={[styles.railBubbleText, { color: bubbleColor }]}>{active}</Text>
+					</View>
+				</View>
+			)}
+			<View
+				style={styles.rail}
+				onLayout={(e: LayoutChangeEvent) => setHeight(e.nativeEvent.layout.height)}
+				onStartShouldSetResponder={() => true}
+				onMoveShouldSetResponder={() => true}
+				onResponderTerminationRequest={() => false}
+				onResponderGrant={handleTouch}
+				onResponderMove={handleTouch}
+				onResponderRelease={handleRelease}
+				onResponderTerminate={handleRelease}
+			>
+				{/* pointerEvents none so locationY is relative to the rail, not a letter */}
+				<View pointerEvents="none" style={styles.railLetters}>
+					{RAIL_LETTERS.map((l) => (
+						<Text
+							key={l}
+							style={[styles.railLetter, { color: available.has(l) ? color : dimColor }]}
+						>
+							{l}
+						</Text>
+					))}
+				</View>
+			</View>
+		</>
+	)
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Screen                                                                     */
+/* -------------------------------------------------------------------------- */
+
 export default function LibraryScreen() {
 	const theme = useTheme()
+	const isAero = theme.id === 'frutiger-aero'
 	const haptic = useHapticFeedback()
 	const queue = usePlayerStore((s) => s.queue)
-	const currentTrack = usePlayerStore((s) => s.currentTrack)
 	const clearQueue = usePlayerStore((s) => s.clearQueue)
 	const play = usePlayerStore((s) => s.play)
 
@@ -31,7 +233,6 @@ export default function LibraryScreen() {
 	const downloadedTracks = useDownloadStore((s) => s.downloadedTracks)
 	const isDownloaded = useDownloadStore((s) => s.isDownloaded)
 
-	// Device Media Store
 	const deviceTracks = useDeviceMediaStore((s) => s.deviceTracks)
 	const isScanning = useDeviceMediaStore((s) => s.isScanning)
 	const scanTracks = useDeviceMediaStore((s) => s.scanTracks)
@@ -43,30 +244,53 @@ export default function LibraryScreen() {
 	const [deviceSearchQuery, setDeviceSearchQuery] = useState('')
 	const [autoPlaylistVisible, setAutoPlaylistVisible] = useState(false)
 
-	const queueAsSongs: Song[] = useMemo(
-		() =>
-			queue.map((t) => ({
-				id: t.id,
-				title: t.title,
-				artist: t.artist,
-				thumbnail: t.artwork,
-				duration: t.duration,
-				videoId: '',
-			})),
-		[queue]
+	const deviceListRef = useRef<FlatList<Song>>(null)
+
+	// Alphabetical, so the A–Z rail maps letters to list positions.
+	const sortedDeviceTracks = useMemo(
+		() => [...deviceTracks].sort((a, b) => a.title.localeCompare(b.title)),
+		[deviceTracks]
 	)
 
-	// Filtered device tracks
 	const filteredDeviceTracks = useMemo(() => {
-		if (!deviceSearchQuery.trim()) return deviceTracks
-		const q = deviceSearchQuery.toLowerCase()
-		return deviceTracks.filter(
+		const q = deviceSearchQuery.trim().toLowerCase()
+		if (!q) return sortedDeviceTracks
+		return sortedDeviceTracks.filter(
 			(t) =>
 				t.title.toLowerCase().includes(q) ||
 				t.artist.toLowerCase().includes(q) ||
 				(t.album && t.album.toLowerCase().includes(q))
 		)
-	}, [deviceTracks, deviceSearchQuery])
+	}, [sortedDeviceTracks, deviceSearchQuery])
+
+	// First list index for each letter, for the jump rail.
+	const letterIndex = useMemo(() => {
+		const map = new Map<string, number>()
+		filteredDeviceTracks.forEach((t, i) => {
+			const l = letterOf(t.title)
+			if (!map.has(l)) map.set(l, i)
+		})
+		return map
+	}, [filteredDeviceTracks])
+	const availableLetters = useMemo(() => new Set(letterIndex.keys()), [letterIndex])
+
+	const handleRailSelect = useCallback(
+		(letter: string) => {
+			// Land on the requested letter, or the next one that has songs.
+			const start = RAIL_LETTERS.indexOf(letter)
+			for (let i = start; i < RAIL_LETTERS.length; i++) {
+				const index = letterIndex.get(RAIL_LETTERS[i])
+				if (index !== undefined) {
+					deviceListRef.current?.scrollToIndex({ index, animated: false })
+					return
+				}
+			}
+			// Past the last populated letter — jump to the end.
+			const last = filteredDeviceTracks.length - 1
+			if (last >= 0) deviceListRef.current?.scrollToIndex({ index: last, animated: false })
+		},
+		[letterIndex, filteredDeviceTracks.length]
+	)
 
 	const handleMenuAction = useCallback(
 		(action: 'download' | 'playlist', song: Song) => {
@@ -99,86 +323,47 @@ export default function LibraryScreen() {
 	const handleShuffleDevice = useCallback(() => {
 		if (filteredDeviceTracks.length > 0) {
 			haptic.light()
-			const shuffled = [...filteredDeviceTracks].sort(() => Math.random() - 0.5)
+			const shuffled = shuffleCopy(filteredDeviceTracks)
 			play(shuffled[0], shuffled)
 		}
 	}, [filteredDeviceTracks, haptic, play])
 
-	const renderTabs = () => (
-		<View style={styles.tabsContainer}>
-			{(['device', 'downloads', 'playlists', 'queue'] as TabType[]).map((tab) => {
-				const isActive = activeTab === tab
-				let label = tab.charAt(0).toUpperCase() + tab.slice(1)
-				if (tab === 'device') label = 'Device MP3s'
-
-				return (
-					<TouchableOpacity
-						key={tab}
-						style={[
-							styles.tab,
-							isActive && { backgroundColor: theme.colors.accentPrimary },
-						]}
-						onPress={() => {
-							haptic.selection()
-							setActiveTab(tab)
-							setViewingPlaylistId(null)
-						}}
-					>
-						<Text
-							style={[
-								styles.tabText,
-								isActive
-									? { color: theme.colors.textOnAccent, fontWeight: 'bold' }
-									: { color: theme.colors.textSecondary },
-							]}
-						>
-							{label}
-						</Text>
-					</TouchableOpacity>
-				)
-			})}
-		</View>
+	const handleSelectTab = useCallback(
+		(tab: TabType) => {
+			haptic.selection()
+			setActiveTab(tab)
+			setViewingPlaylistId(null)
+		},
+		[haptic]
 	)
 
-	const renderHeader = () => (
-		<View style={styles.header}>
-			<Text
-				style={[
-					styles.title,
-					theme.id === 'frutiger-aero'
-						? {
-								color: 'rgba(230,250,255,1)',
-								fontSize: 32,
-								fontFamily: 'Rajdhani_700Bold',
-								textShadowColor: 'rgba(0,0,0,0.6)',
-								textShadowOffset: { width: 0, height: 2 },
-								textShadowRadius: 6,
-								textTransform: 'lowercase',
-							}
-						: {
-								color: theme.colors.textPrimary,
-								fontSize: 28,
-								fontWeight: '800',
-							},
-				]}
-			>
-				Library
-			</Text>
-			{renderTabs()}
-		</View>
-	)
+	const viewingPlaylist = viewingPlaylistId
+		? playlists.find((p) => p.id === viewingPlaylistId)
+		: undefined
 
-	const renderEmpty = (title: string, subtitle: string, icon: any, actionButton?: React.ReactNode) => (
-		<GlassCard
-			style={styles.emptyCard}
-			intensity="light"
-			variant={theme.id === 'frutiger-aero' ? 'dark' : 'default'}
-		>
-			<Ionicons
-				name={icon}
-				size={48}
-				color={theme.id === 'frutiger-aero' ? 'rgba(0,180,255,0.7)' : theme.colors.textMuted}
-			/>
+	const accent = theme.colors.accentPrimary
+	const pillBackground = isAero ? 'rgba(0, 180, 255, 0.25)' : accent + '25'
+	const fieldBackground = isAero ? 'rgba(10, 45, 75, 0.55)' : theme.colors.controlBackground
+	const titleStyle = isAero
+		? {
+				color: 'rgba(230,250,255,1)',
+				fontSize: 30,
+				fontFamily: 'Rajdhani_700Bold',
+				textShadowColor: 'rgba(0,0,0,0.6)',
+				textShadowOffset: { width: 0, height: 2 },
+				textShadowRadius: 6,
+				textTransform: 'lowercase' as const,
+			}
+		: { color: theme.colors.textPrimary, fontSize: 26, fontWeight: '800' as const }
+
+	const renderEmpty = (
+		title: string,
+		subtitle: string,
+		icon: keyof typeof Ionicons.glyphMap,
+		actionButton?: React.ReactNode
+	) => (
+		<GlassCard style={styles.emptyCard} intensity="light" variant={isAero ? 'dark' : 'default'}>
+			<Ionicons name={icon} size={44} color={isAero ? 'rgba(0,180,255,0.7)' : theme.colors.textMuted} />
 			<Text
 				style={[
 					styles.emptyTitle,
@@ -193,424 +378,220 @@ export default function LibraryScreen() {
 			>
 				{title}
 			</Text>
-			<Text
-				style={[
-					styles.emptySubtitle,
-					{
-						color: theme.colors.textSecondary,
-						fontFamily: theme.typography.fontFamily,
-						textShadowColor: theme.typography.textShadowColor,
-						textShadowOffset: theme.typography.textShadowOffset,
-						textShadowRadius: theme.typography.textShadowRadius,
-					},
-				]}
-			>
-				{subtitle}
-			</Text>
+			<Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>{subtitle}</Text>
 			{actionButton}
 		</GlassCard>
 	)
 
-	const renderDevice = () => (
-		<>
-			<View style={styles.sectionHeader}>
-				<View>
-					<Text
-						style={[
-							styles.sectionTitle,
-							{
-								color: theme.colors.textPrimary,
-								fontFamily: theme.typography.fontFamily,
-								textShadowColor: theme.typography.textShadowColor,
-								textShadowOffset: theme.typography.textShadowOffset,
-								textShadowRadius: theme.typography.textShadowRadius,
-							},
-						]}
-					>
-						Device Audio
-					</Text>
-					<Text style={{ color: theme.colors.textSecondary, fontSize: 12, marginTop: 2 }}>
-						{deviceTracks.length} {deviceTracks.length === 1 ? 'song' : 'songs'} on device
-					</Text>
-				</View>
+	/* ----------------------------- header actions ---------------------------- */
 
-				<TouchableOpacity
-					style={[
-						styles.scanButton,
-						{
-							backgroundColor:
-								theme.id === 'frutiger-aero'
-									? 'rgba(0, 180, 255, 0.25)'
-									: theme.colors.accentPrimary + '25',
-							borderColor: theme.colors.accentPrimary,
-						},
-					]}
-					onPress={handleScanDevice}
-					disabled={isScanning}
-				>
-					{isScanning ? (
-						<ActivityIndicator size="small" color={theme.colors.accentPrimary} />
-					) : (
-						<Ionicons name="refresh" size={16} color={theme.colors.accentPrimary} />
-					)}
-					<Text
-						style={[
-							styles.scanButtonText,
-							{ color: theme.colors.accentPrimary, fontWeight: '700' },
-						]}
-					>
-						{isScanning ? 'Scanning...' : 'Scan MP3s'}
-					</Text>
-				</TouchableOpacity>
-			</View>
-
-			{deviceTracks.length > 0 && (
-				<>
-					{/* Search & Actions Bar */}
-					<View style={styles.deviceActionsRow}>
-						<View
-							style={[
-								styles.searchInputContainer,
-								{
-									backgroundColor:
-										theme.id === 'frutiger-aero'
-											? 'rgba(10, 45, 75, 0.55)'
-											: theme.colors.controlBackground,
-									borderColor: theme.colors.divider,
-								},
-							]}
-						>
-							<Ionicons
-								name="search"
-								size={16}
-								color={theme.colors.textSecondary}
-								style={{ marginRight: 6 }}
-							/>
-							<TextInput
-								value={deviceSearchQuery}
-								onChangeText={setDeviceSearchQuery}
-								placeholder="Filter on-device tracks..."
-								placeholderTextColor={theme.colors.textMuted}
-								style={[styles.searchInput, { color: theme.colors.textPrimary }]}
-							/>
-							{deviceSearchQuery.length > 0 && (
-								<TouchableOpacity onPress={() => setDeviceSearchQuery('')}>
-									<Ionicons name="close-circle" size={16} color={theme.colors.textMuted} />
-								</TouchableOpacity>
-							)}
-						</View>
-
-						<View style={styles.quickPlayButtons}>
-							<TouchableOpacity
-								style={[
-									styles.quickPlayBtn,
-									{ backgroundColor: theme.colors.accentPrimary },
-								]}
-								onPress={handlePlayAllDevice}
-							>
-								<Ionicons name="play" size={14} color={theme.colors.textOnAccent} />
-								<Text style={[styles.quickPlayBtnText, { color: theme.colors.textOnAccent }]}>
-									Play All
-								</Text>
-							</TouchableOpacity>
-
-							<TouchableOpacity
-								style={[
-									styles.quickPlayBtn,
-									{
-										backgroundColor:
-											theme.id === 'frutiger-aero'
-												? 'rgba(0, 180, 255, 0.2)'
-												: theme.colors.controlBackground,
-										borderColor: theme.colors.divider,
-										borderWidth: 1,
-									},
-								]}
-								onPress={handleShuffleDevice}
-							>
-								<Ionicons name="shuffle" size={14} color={theme.colors.accentPrimary} />
-								<Text style={[styles.quickPlayBtnText, { color: theme.colors.accentPrimary }]}>
-									Shuffle
-								</Text>
-							</TouchableOpacity>
-						</View>
-					</View>
-				</>
-			)}
-
-			{isScanning && deviceTracks.length === 0 ? (
-				<GlassCard
-					style={styles.emptyCard}
-					intensity="light"
-					variant={theme.id === 'frutiger-aero' ? 'dark' : 'default'}
-				>
-					<ActivityIndicator size="large" color={theme.colors.accentPrimary} />
-					<Text style={[styles.emptyTitle, { color: theme.colors.textPrimary, marginTop: 12 }]}>
-						Scanning Device Storage...
-					</Text>
-					<Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
-						Searching for local MP3, M4A, and FLAC audio files.
-					</Text>
-				</GlassCard>
-			) : deviceTracks.length === 0 ? (
-				renderEmpty(
-					'No MP3s Detected',
-					'Scan your device to detect and play local music files stored in your Downloads or Music folders.',
-					'musical-notes-outline',
-					<TouchableOpacity
-						style={[
-							styles.prominentScanBtn,
-							{ backgroundColor: theme.colors.accentPrimary },
-						]}
-						onPress={handleScanDevice}
-					>
-						<Ionicons name="scan-outline" size={18} color={theme.colors.textOnAccent} />
-						<Text style={[styles.prominentScanBtnText, { color: theme.colors.textOnAccent }]}>
-							Scan Device for MP3s
-						</Text>
-					</TouchableOpacity>
-				)
-			) : filteredDeviceTracks.length === 0 ? (
-				renderEmpty('No Matching Songs', 'Try searching for a different title or artist.', 'search')
+	const pill = (
+		icon: keyof typeof Ionicons.glyphMap,
+		label: string,
+		onPress: () => void,
+		opts?: { loading?: boolean; disabled?: boolean }
+	) => (
+		<TouchableOpacity
+			style={[styles.pill, { backgroundColor: pillBackground, borderColor: accent }]}
+			onPress={onPress}
+			disabled={opts?.disabled}
+		>
+			{opts?.loading ? (
+				<ActivityIndicator size="small" color={accent} />
 			) : (
-				filteredDeviceTracks.map((track, index) => {
-					const song: Song = {
-						...track,
-						videoId: track.id,
-						thumbnail: track.artwork || '',
-					}
-					return (
-						<SongListItem
-							key={track.id}
-							song={song}
-							index={index}
-							isActive={currentTrack?.id === track.id}
-							onMenuAction={handleMenuAction}
-							onPress={() => play(track, filteredDeviceTracks)}
-						/>
-					)
-				})
+				<Ionicons name={icon} size={15} color={accent} />
 			)}
-		</>
+			<Text style={[styles.pillText, { color: accent }]}>{label}</Text>
+		</TouchableOpacity>
 	)
 
-	const renderQueue = () => (
-		<>
-			<View style={styles.sectionHeader}>
-				<Text
-					style={[
-						styles.sectionTitle,
-						{
-							color: theme.colors.textPrimary,
-							fontFamily: theme.typography.fontFamily,
-							textShadowColor: theme.typography.textShadowColor,
-							textShadowOffset: theme.typography.textShadowOffset,
-							textShadowRadius: theme.typography.textShadowRadius,
-						},
-					]}
-				>
-					Current Queue
-				</Text>
-				{queue.length > 0 && (
-					<TouchableOpacity onPress={clearQueue}>
-						<Text style={{ color: theme.colors.accentPrimary, fontWeight: '600' }}>Clear</Text>
-					</TouchableOpacity>
-				)}
-			</View>
-			{queue.length === 0
-				? renderEmpty('Queue is empty', 'Play a song to see it here.', 'list')
-				: queueAsSongs.map((song, index) => (
-						<SongListItem
-							key={`${song.id}-${index}`}
-							song={song}
-							index={index}
-							isActive={currentTrack?.id === song.id}
-							onMenuAction={handleMenuAction}
-							onPress={() => play(queue[index], queue)}
-						/>
-					))}
-		</>
-	)
-
-	const renderDownloads = () => (
-		<>
-			<View style={styles.sectionHeader}>
-				<Text
-					style={[
-						styles.sectionTitle,
-						{
-							color: theme.colors.textPrimary,
-							fontFamily: theme.typography.fontFamily,
-							textShadowColor: theme.typography.textShadowColor,
-							textShadowOffset: theme.typography.textShadowOffset,
-							textShadowRadius: theme.typography.textShadowRadius,
-						},
-					]}
-				>
-					Offline Songs
-				</Text>
-			</View>
-			{downloadedTracks.length === 0
-				? renderEmpty('No downloads', 'Download songs to listen offline.', 'cloud-offline')
-				: downloadedTracks.map((track, index) => {
-						const song: Song = { ...track, videoId: track.id, thumbnail: track.artwork || '' }
-						return (
-							<SongListItem
-								key={song.id}
-								song={song}
-								index={index}
-								isActive={currentTrack?.id === song.id}
-								onMenuAction={handleMenuAction}
-								onPress={() => play(track, downloadedTracks)}
-							/>
-						)
-					})}
-		</>
-	)
-
-	const renderPlaylists = () => {
-		if (viewingPlaylistId) {
-			const playlist = playlists.find((p) => p.id === viewingPlaylistId)
-			if (!playlist) return null
-			return (
-				<>
-					<View style={styles.sectionHeader}>
-						<TouchableOpacity
-							onPress={() => setViewingPlaylistId(null)}
-							style={{ flexDirection: 'row', alignItems: 'center' }}
-						>
-							<Ionicons name="chevron-back" size={24} color={theme.colors.textPrimary} />
-							<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary, marginLeft: 8 }]}>
-								{playlist.name}
-							</Text>
-						</TouchableOpacity>
-					</View>
-					{playlist.tracks.length === 0
-						? renderEmpty('Playlist is empty', 'Add songs to this playlist.', 'musical-notes')
-						: playlist.tracks.map((track, index) => {
-								const song: Song = { ...track, videoId: track.id, thumbnail: track.artwork || '' }
-								return (
-									<SongListItem
-										key={song.id}
-										song={song}
-										index={index}
-										isActive={currentTrack?.id === song.id}
-										onMenuAction={handleMenuAction}
-										onPress={() => play(track, playlist.tracks)}
-									/>
-								)
-							})}
-				</>
-			)
+	const renderHeaderActions = () => {
+		if (activeTab === 'device') {
+			return pill('refresh', isScanning ? 'Scanning' : 'Scan', handleScanDevice, {
+				loading: isScanning,
+				disabled: isScanning,
+			})
 		}
-
-		return (
-			<>
-				<View style={styles.sectionHeader}>
-					<Text
-						style={[
-							styles.sectionTitle,
-							{
-								color: theme.colors.textPrimary,
-								fontFamily: theme.typography.fontFamily,
-								textShadowColor: theme.typography.textShadowColor,
-								textShadowOffset: theme.typography.textShadowOffset,
-								textShadowRadius: theme.typography.textShadowRadius,
-							},
-						]}
-					>
-						Your Playlists
-					</Text>
-					<View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-						<TouchableOpacity
-							style={[
-								styles.smartMixHeaderBtn,
-								{
-									backgroundColor:
-										theme.id === 'frutiger-aero'
-											? 'rgba(0, 180, 255, 0.25)'
-											: theme.colors.accentPrimary + '20',
-									borderColor: theme.colors.accentPrimary,
-								},
-							]}
-							onPress={() => {
-								haptic.medium()
-								setAutoPlaylistVisible(true)
-							}}
-						>
-							<Ionicons name="sparkles" size={13} color={theme.colors.accentPrimary} />
-							<Text style={[styles.smartMixHeaderBtnText, { color: theme.colors.accentPrimary }]}>
-								Smart Mix
-							</Text>
-						</TouchableOpacity>
-
-						<TouchableOpacity onPress={() => setModalVisible(true)}>
-							<Text style={{ color: theme.colors.accentPrimary, fontWeight: '600' }}>New</Text>
-						</TouchableOpacity>
-					</View>
-				</View>
-
-				{/* Smart Mix Hero Banner */}
-				<TouchableOpacity
-					style={[
-						styles.smartMixBanner,
-						{
-							backgroundColor:
-								theme.id === 'frutiger-aero'
-									? 'rgba(10, 50, 85, 0.65)'
-									: theme.colors.controlBackground,
-							borderColor:
-								theme.id === 'frutiger-aero'
-									? 'rgba(0, 200, 255, 0.4)'
-									: theme.colors.divider,
-						},
-					]}
-					onPress={() => {
+		if (activeTab === 'queue' && queue.length > 0) {
+			return pill('trash-outline', 'Clear', () => clearQueue())
+		}
+		if (activeTab === 'playlists' && !viewingPlaylistId) {
+			return (
+				<View style={styles.headerActionsRow}>
+					{pill('sparkles', 'Smart Mix', () => {
 						haptic.medium()
 						setAutoPlaylistVisible(true)
-					}}
-					activeOpacity={0.8}
+					})}
+					{pill('add', 'New', () => setModalVisible(true))}
+				</View>
+			)
+		}
+		return null
+	}
+
+	/* ------------------------------- tab bodies ------------------------------ */
+
+	const renderDeviceToolbar = () =>
+		deviceTracks.length > 0 ? (
+			<View style={styles.toolbar}>
+				<View style={[styles.searchBox, { backgroundColor: fieldBackground, borderColor: theme.colors.divider }]}>
+					<Ionicons name="search" size={16} color={theme.colors.textSecondary} />
+					<TextInput
+						value={deviceSearchQuery}
+						onChangeText={setDeviceSearchQuery}
+						placeholder={`Search ${deviceTracks.length.toLocaleString()} songs`}
+						placeholderTextColor={theme.colors.textMuted}
+						style={[styles.searchInput, { color: theme.colors.textPrimary }]}
+						returnKeyType="search"
+					/>
+					{deviceSearchQuery.length > 0 && (
+						<TouchableOpacity onPress={() => setDeviceSearchQuery('')} hitSlop={8}>
+							<Ionicons name="close-circle" size={16} color={theme.colors.textMuted} />
+						</TouchableOpacity>
+					)}
+				</View>
+				<TouchableOpacity
+					style={[styles.iconBtn, { backgroundColor: accent }]}
+					onPress={handlePlayAllDevice}
+					accessibilityLabel="Play all"
 				>
-					<View
-						style={[
-							styles.smartMixIconCircle,
-							{ backgroundColor: theme.colors.accentPrimary },
-						]}
-					>
-						<Ionicons name="sparkles" size={20} color={theme.colors.textOnAccent} />
-					</View>
-					<View style={{ flex: 1, gap: 2 }}>
-						<Text style={[styles.smartMixBannerTitle, { color: theme.colors.textPrimary }]}>
-							Auto-Playlist Generator
-						</Text>
-						<Text style={[styles.smartMixBannerSubtitle, { color: theme.colors.textSecondary }]}>
-							Generate instant mood, workout, or chill mixes from your song pool
-						</Text>
-					</View>
-					<Ionicons name="chevron-forward" size={18} color={theme.colors.accentPrimary} />
+					<Ionicons name="play" size={18} color={theme.colors.textOnAccent} />
 				</TouchableOpacity>
-				{playlists.length === 0
-					? renderEmpty('No playlists', 'Create a playlist to organize your music.', 'list')
-					: playlists.map((playlist) => (
-							<TouchableOpacity
-								key={playlist.id}
-								style={styles.playlistRow}
-								onPress={() => setViewingPlaylistId(playlist.id)}
-							>
-								<Ionicons name="list" size={24} color={theme.colors.accentPrimary} />
-								<View style={styles.playlistInfo}>
-									<Text style={[styles.playlistName, { color: theme.colors.textPrimary }]}>
-										{playlist.name}
-									</Text>
-									<Text style={[styles.playlistCount, { color: theme.colors.textSecondary }]}>
-										{playlist.tracks.length} songs
-									</Text>
-								</View>
-								<Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
-							</TouchableOpacity>
-						))}
-			</>
+				<TouchableOpacity
+					style={[styles.iconBtn, { backgroundColor: pillBackground, borderColor: accent, borderWidth: 1 }]}
+					onPress={handleShuffleDevice}
+					accessibilityLabel="Shuffle all"
+				>
+					<Ionicons name="shuffle" size={18} color={accent} />
+				</TouchableOpacity>
+			</View>
+		) : null
+
+	const renderDeviceBody = () => {
+		if (isScanning && deviceTracks.length === 0) {
+			return (
+				<View style={styles.emptyWrap}>
+					<GlassCard style={styles.emptyCard} intensity="light" variant={isAero ? 'dark' : 'default'}>
+						<ActivityIndicator size="large" color={accent} />
+						<Text style={[styles.emptyTitle, { color: theme.colors.textPrimary }]}>
+							Scanning device storage…
+						</Text>
+						<Text style={[styles.emptySubtitle, { color: theme.colors.textSecondary }]}>
+							Searching for local MP3, M4A and FLAC files.
+						</Text>
+					</GlassCard>
+				</View>
+			)
+		}
+		if (deviceTracks.length === 0) {
+			return (
+				<View style={styles.emptyWrap}>
+					{renderEmpty(
+						'No MP3s detected',
+						'Scan your device to find music in your Downloads or Music folders.',
+						'musical-notes-outline',
+						<TouchableOpacity
+							style={[styles.prominentBtn, { backgroundColor: accent }]}
+							onPress={handleScanDevice}
+						>
+							<Ionicons name="scan-outline" size={18} color={theme.colors.textOnAccent} />
+							<Text style={[styles.prominentBtnText, { color: theme.colors.textOnAccent }]}>Scan device</Text>
+						</TouchableOpacity>
+					)}
+				</View>
+			)
+		}
+		return (
+			<View style={styles.listArea}>
+				<TrackList
+					tracks={filteredDeviceTracks}
+					empty={renderEmpty('No matching songs', 'Try a different title or artist.', 'search')}
+					listRef={deviceListRef}
+					onMenuAction={handleMenuAction}
+				/>
+				{filteredDeviceTracks.length >= RAIL_MIN_TRACKS && (
+					<AlphaRail
+						available={availableLetters}
+						onSelect={handleRailSelect}
+						color={accent}
+						dimColor={theme.colors.textMuted + '66'}
+						bubbleBackground={accent}
+						bubbleColor={theme.colors.textOnAccent}
+					/>
+				)}
+			</View>
 		)
+	}
+
+	const renderPlaylistsBody = () => {
+		if (viewingPlaylistId) {
+			if (!viewingPlaylist) return null
+			return (
+				<View style={styles.listArea}>
+					<TrackList
+						tracks={viewingPlaylist.tracks}
+						showIndex
+						empty={renderEmpty('Playlist is empty', 'Add songs to this playlist.', 'musical-notes')}
+						onMenuAction={handleMenuAction}
+					/>
+				</View>
+			)
+		}
+		return (
+			<FlatList
+				data={playlists}
+				keyExtractor={(p) => p.id}
+				renderItem={({ item }) => (
+					<TouchableOpacity style={styles.playlistRow} onPress={() => setViewingPlaylistId(item.id)}>
+						<Ionicons name="list" size={24} color={accent} />
+						<View style={styles.playlistInfo}>
+							<Text style={[styles.playlistName, { color: theme.colors.textPrimary }]}>{item.name}</Text>
+							<Text style={[styles.playlistCount, { color: theme.colors.textSecondary }]}>
+								{item.tracks.length} {item.tracks.length === 1 ? 'song' : 'songs'}
+							</Text>
+						</View>
+						<Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
+					</TouchableOpacity>
+				)}
+				ListEmptyComponent={renderEmpty(
+					'No playlists',
+					'Create one with New, or let Smart Mix build one for you.',
+					'list'
+				)}
+				contentContainerStyle={styles.listContent}
+				showsVerticalScrollIndicator={false}
+			/>
+		)
+	}
+
+	const renderBody = () => {
+		switch (activeTab) {
+			case 'device':
+				return renderDeviceBody()
+			case 'downloads':
+				return (
+					<View style={styles.listArea}>
+						<TrackList
+							tracks={downloadedTracks}
+							empty={renderEmpty('No downloads', 'Download songs to listen offline.', 'cloud-offline')}
+							onMenuAction={handleMenuAction}
+						/>
+					</View>
+				)
+			case 'playlists':
+				return renderPlaylistsBody()
+			case 'queue':
+				return (
+					<View style={styles.listArea}>
+						<TrackList
+							tracks={queue}
+							showIndex
+							empty={renderEmpty('Queue is empty', 'Play a song to see it here.', 'list')}
+							onMenuAction={handleMenuAction}
+						/>
+					</View>
+				)
+		}
 	}
 
 	return (
@@ -622,14 +603,55 @@ export default function LibraryScreen() {
 		>
 			<BackgroundParticles />
 			<SafeAreaView style={styles.safeArea} edges={['top']}>
-				<ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-					{renderHeader()}
-					{activeTab === 'device' && renderDevice()}
-					{activeTab === 'downloads' && renderDownloads()}
-					{activeTab === 'playlists' && renderPlaylists()}
-					{activeTab === 'queue' && renderQueue()}
-					<View style={{ height: 140 }} />
-				</ScrollView>
+				{/* Pinned header: stays on screen while the list scrolls */}
+				<View style={styles.header}>
+					<View style={styles.titleRow}>
+						{viewingPlaylist ? (
+							<TouchableOpacity
+								onPress={() => setViewingPlaylistId(null)}
+								style={styles.backRow}
+								hitSlop={8}
+							>
+								<Ionicons name="chevron-back" size={24} color={theme.colors.textPrimary} />
+								<Text style={[styles.title, titleStyle, { flexShrink: 1 }]} numberOfLines={1}>
+									{viewingPlaylist.name}
+								</Text>
+							</TouchableOpacity>
+						) : (
+							<Text style={[styles.title, titleStyle]}>Library</Text>
+						)}
+						{renderHeaderActions()}
+					</View>
+
+					<View style={styles.tabsContainer}>
+						{TABS.map((tab) => {
+							const isActive = activeTab === tab.id
+							return (
+								<TouchableOpacity
+									key={tab.id}
+									style={[styles.tab, isActive && { backgroundColor: accent }]}
+									onPress={() => handleSelectTab(tab.id)}
+								>
+									<Text
+										numberOfLines={1}
+										style={[
+											styles.tabText,
+											isActive
+												? { color: theme.colors.textOnAccent, fontWeight: '700' }
+												: { color: theme.colors.textSecondary },
+										]}
+									>
+										{tab.label}
+									</Text>
+								</TouchableOpacity>
+							)
+						})}
+					</View>
+
+					{activeTab === 'device' && renderDeviceToolbar()}
+				</View>
+
+				<View style={styles.body}>{renderBody()}</View>
 			</SafeAreaView>
 
 			<PlaylistModal
@@ -638,10 +660,7 @@ export default function LibraryScreen() {
 				song={selectedSong}
 			/>
 
-			<AutoPlaylistModal
-				visible={autoPlaylistVisible}
-				onClose={() => setAutoPlaylistVisible(false)}
-			/>
+			<AutoPlaylistModal visible={autoPlaylistVisible} onClose={() => setAutoPlaylistVisible(false)} />
 		</LinearGradient>
 	)
 }
@@ -649,90 +668,110 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
 	container: { flex: 1 },
 	safeArea: { flex: 1 },
-	listContent: { paddingHorizontal: 16 },
-	header: { paddingTop: 16, paddingBottom: 16, gap: 16 },
-	title: { letterSpacing: -0.5 },
-	tabsContainer: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' },
-	tab: {
-		paddingVertical: 8,
-		paddingHorizontal: 14,
-		borderRadius: 20,
-		backgroundColor: 'rgba(255,255,255,0.1)',
-	},
-	tabText: { fontSize: 13 },
-	sectionHeader: {
+	body: { flex: 1 },
+	listArea: { flex: 1 },
+	// Room for the floating mini-player + tab bar
+	listContent: { paddingHorizontal: 16, paddingBottom: 150 },
+
+	header: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8, gap: 10 },
+	titleRow: {
 		flexDirection: 'row',
-		justifyContent: 'space-between',
 		alignItems: 'center',
-		marginBottom: 14,
-		marginTop: 8,
+		justifyContent: 'space-between',
+		minHeight: 38,
+		gap: 8,
 	},
-	sectionTitle: { fontSize: 18, fontWeight: '700' },
-	scanButton: {
+	title: { letterSpacing: -0.5 },
+	backRow: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
+	headerActionsRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+
+	pill: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		paddingHorizontal: 12,
-		paddingVertical: 6,
+		paddingVertical: 7,
 		borderRadius: 16,
 		borderWidth: 1,
 		gap: 6,
 	},
-	scanButtonText: {
-		fontSize: 12,
+	pillText: { fontSize: 12, fontWeight: '700' },
+
+	tabsContainer: { flexDirection: 'row', gap: 6 },
+	tab: {
+		flex: 1,
+		paddingVertical: 8,
+		borderRadius: 18,
+		alignItems: 'center',
+		backgroundColor: 'rgba(255,255,255,0.1)',
 	},
-	deviceActionsRow: {
-		gap: 10,
-		marginBottom: 14,
-	},
-	searchInputContainer: {
+	tabText: { fontSize: 12 },
+
+	toolbar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+	searchBox: {
+		flex: 1,
 		flexDirection: 'row',
 		alignItems: 'center',
 		paddingHorizontal: 12,
-		paddingVertical: 8,
-		borderRadius: 12,
+		height: 38,
+		borderRadius: 19,
 		borderWidth: 1,
-	},
-	searchInput: {
-		flex: 1,
-		fontSize: 13,
-		padding: 0,
-	},
-	quickPlayButtons: {
-		flexDirection: 'row',
-		gap: 8,
-	},
-	quickPlayBtn: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 14,
-		paddingVertical: 7,
-		borderRadius: 14,
 		gap: 6,
 	},
-	quickPlayBtnText: {
-		fontSize: 12,
-		fontWeight: '600',
+	searchInput: { flex: 1, fontSize: 13, padding: 0 },
+	iconBtn: {
+		width: 38,
+		height: 38,
+		borderRadius: 19,
+		alignItems: 'center',
+		justifyContent: 'center',
 	},
-	prominentScanBtn: {
+
+	// A–Z rail
+	rail: {
+		position: 'absolute',
+		right: 0,
+		top: 8,
+		bottom: 150,
+		width: 26,
+		justifyContent: 'center',
+	},
+	railLetters: { flex: 1, justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
+	railLetter: { fontSize: 10, fontWeight: '700', lineHeight: 12 },
+	railBubbleWrap: {
+		...StyleSheet.absoluteFillObject,
+		alignItems: 'center',
+		justifyContent: 'center',
+		zIndex: 5,
+	},
+	railBubble: {
+		width: 72,
+		height: 72,
+		borderRadius: 36,
+		alignItems: 'center',
+		justifyContent: 'center',
+		opacity: 0.92,
+	},
+	railBubbleText: { fontSize: 34, fontWeight: '800' },
+
+	emptyCard: { alignItems: 'center', paddingVertical: 32, gap: 10, marginTop: 12 },
+	emptyWrap: { paddingHorizontal: 16 },
+	emptyTitle: { fontSize: 17, fontWeight: '700' },
+	emptySubtitle: { fontSize: 13, textAlign: 'center', lineHeight: 18, paddingHorizontal: 16 },
+	prominentBtn: {
 		flexDirection: 'row',
 		alignItems: 'center',
 		paddingHorizontal: 18,
 		paddingVertical: 10,
 		borderRadius: 20,
 		gap: 8,
-		marginTop: 8,
+		marginTop: 6,
 	},
-	prominentScanBtnText: {
-		fontSize: 14,
-		fontWeight: '700',
-	},
-	emptyCard: { alignItems: 'center', paddingVertical: 40, gap: 12, marginTop: 20 },
-	emptyTitle: { fontSize: 18, fontWeight: '700' },
-	emptySubtitle: { fontSize: 13, textAlign: 'center', lineHeight: 18, paddingHorizontal: 16 },
+	prominentBtnText: { fontSize: 14, fontWeight: '700' },
+
 	playlistRow: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		paddingVertical: 12,
+		paddingVertical: 14,
 		borderBottomWidth: 1,
 		borderBottomColor: 'rgba(255,255,255,0.05)',
 		gap: 12,
@@ -740,41 +779,4 @@ const styles = StyleSheet.create({
 	playlistInfo: { flex: 1 },
 	playlistName: { fontSize: 16, fontWeight: '500' },
 	playlistCount: { fontSize: 12, marginTop: 2 },
-	smartMixHeaderBtn: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		paddingHorizontal: 10,
-		paddingVertical: 5,
-		borderRadius: 14,
-		borderWidth: 1,
-		gap: 4,
-	},
-	smartMixHeaderBtnText: {
-		fontSize: 12,
-		fontWeight: '700',
-	},
-	smartMixBanner: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		padding: 12,
-		borderRadius: 16,
-		borderWidth: 1,
-		gap: 12,
-		marginBottom: 16,
-	},
-	smartMixIconCircle: {
-		width: 38,
-		height: 38,
-		borderRadius: 19,
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	smartMixBannerTitle: {
-		fontSize: 14,
-		fontWeight: '700',
-	},
-	smartMixBannerSubtitle: {
-		fontSize: 11,
-		lineHeight: 15,
-	},
 })
