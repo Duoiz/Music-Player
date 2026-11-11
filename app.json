@@ -53,7 +53,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "./plugins/withMediaScanner"
     ],
     "experiments": {
       "typedRoutes": true,
