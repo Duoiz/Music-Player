@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { FlatList, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { useTheme } from './ThemeProvider'
+import { useSheetColors } from './useSheetColors'
 import { useDeviceMediaStore } from '../stores/deviceMediaStore'
 import { analyzeLibrary, ISSUE_LABELS, type LibraryIssue } from '../utils/libraryHealth'
 
@@ -11,22 +11,22 @@ interface LibraryHealthModalProps {
 }
 
 export function LibraryHealthModal({ visible, onClose }: LibraryHealthModalProps) {
-	const theme = useTheme()
+	const c = useSheetColors()
 	const deviceTracks = useDeviceMediaStore((s) => s.deviceTracks)
 
 	const issues = useMemo(() => (visible ? analyzeLibrary(deviceTracks) : []), [visible, deviceTracks])
 
 	const renderItem = ({ item }: { item: LibraryIssue }) => (
-		<View style={[styles.row, { borderColor: theme.colors.divider }]}>
+		<View style={[styles.row, { borderColor: c.border }]}>
 			<View style={{ flex: 1 }}>
-				<Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }} numberOfLines={1}>
+				<Text style={{ color: c.text, fontWeight: '600' }} numberOfLines={1}>
 					{item.track.title || 'Untitled'}
 				</Text>
-				<Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+				<Text style={{ color: c.textMuted, fontSize: 12 }} numberOfLines={1}>
 					{item.detail}
 				</Text>
 			</View>
-			<Text style={[styles.badge, { color: theme.colors.accentPrimary, borderColor: theme.colors.accentPrimary }]}>
+			<Text style={[styles.badge, { color: c.accent, borderColor: c.accent }]}>
 				{ISSUE_LABELS[item.kind]}
 			</Text>
 		</View>
@@ -35,11 +35,11 @@ export function LibraryHealthModal({ visible, onClose }: LibraryHealthModalProps
 	return (
 		<Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
 			<View style={styles.overlay}>
-				<View style={[styles.sheet, { backgroundColor: theme.colors.backgroundGradient[0] }]}>
+				<View style={[styles.sheet, { backgroundColor: c.surface }]}>
 					<View style={styles.header}>
 						<View>
-							<Text style={[styles.title, { color: theme.colors.textPrimary }]}>Library check</Text>
-							<Text style={{ color: theme.colors.textSecondary, fontSize: 13 }}>
+							<Text style={[styles.title, { color: c.text }]}>Library check</Text>
+							<Text style={{ color: c.textSecondary, fontSize: 13 }}>
 								{deviceTracks.length === 0
 									? 'Scan your device first.'
 									: issues.length === 0
@@ -48,7 +48,7 @@ export function LibraryHealthModal({ visible, onClose }: LibraryHealthModalProps
 							</Text>
 						</View>
 						<TouchableOpacity onPress={onClose} accessibilityLabel="Close">
-							<Ionicons name="close" size={24} color={theme.colors.textPrimary} />
+							<Ionicons name="close" size={24} color={c.text} />
 						</TouchableOpacity>
 					</View>
 					<FlatList

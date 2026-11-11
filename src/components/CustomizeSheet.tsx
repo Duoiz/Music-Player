@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useTheme } from './ThemeProvider'
+import { useSheetColors } from './useSheetColors'
 import { useLayoutStore, usePillMetrics } from '../stores/layoutStore'
 import { useThemeStore } from '../stores/themeStore'
 import { useVibeStore } from '../stores/vibeStore'
@@ -40,24 +41,24 @@ interface StepperProps {
 }
 
 function Stepper({ label, value, min, max, step, format, onChange }: StepperProps) {
-	const theme = useTheme()
+	const c = useSheetColors()
 	const round = (v: number) => Math.round(v * 100) / 100
 	const dec = () => onChange(Math.max(min, round(value - step)))
 	const inc = () => onChange(Math.min(max, round(value + step)))
-	const btn = [styles.stepBtn, { borderColor: theme.colors.divider, backgroundColor: theme.colors.controlBackground }]
+	const btn = [styles.stepBtn, { borderColor: c.border, backgroundColor: c.surfaceAlt }]
 
 	return (
 		<View style={styles.stepRow}>
-			<Text style={[styles.stepLabel, { color: theme.colors.textPrimary }]}>{label}</Text>
+			<Text style={[styles.stepLabel, { color: c.text }]}>{label}</Text>
 			<View style={styles.stepControls}>
 				<TouchableOpacity style={btn} onPress={dec} disabled={value <= min} accessibilityLabel={`Decrease ${label}`}>
-					<Ionicons name="remove" size={18} color={theme.colors.textPrimary} />
+					<Ionicons name="remove" size={18} color={c.text} />
 				</TouchableOpacity>
-				<Text style={[styles.stepValue, { color: theme.colors.textSecondary }]}>
+				<Text style={[styles.stepValue, { color: c.textSecondary }]}>
 					{format ? format(value) : String(value)}
 				</Text>
 				<TouchableOpacity style={btn} onPress={inc} disabled={value >= max} accessibilityLabel={`Increase ${label}`}>
-					<Ionicons name="add" size={18} color={theme.colors.textPrimary} />
+					<Ionicons name="add" size={18} color={c.text} />
 				</TouchableOpacity>
 			</View>
 		</View>
@@ -66,12 +67,13 @@ function Stepper({ label, value, min, max, step, format, onChange }: StepperProp
 
 function LayoutTab() {
 	const theme = useTheme()
+	const c = useSheetColors()
+	const accent = c.accent
 	const pm = usePillMetrics()
 	const layout = useLayoutStore((s) => s.layout)
 	const setLayout = useLayoutStore((s) => s.setLayout)
 	const replaceLayout = useLayoutStore((s) => s.replaceLayout)
-	const accent = theme.colors.accentPrimary
-	const pct = (v: number) => `${Math.round(v * 100)}%`
+		const pct = (v: number) => `${Math.round(v * 100)}%`
 
 	const set = (patch: Partial<LayoutSettings>) => {
 		Haptics.selectionAsync()
@@ -84,7 +86,7 @@ function LayoutTab() {
 				style={[
 					styles.preview,
 					{
-						backgroundColor: theme.colors.controlBackground,
+						backgroundColor: c.surfaceAlt,
 						borderRadius: theme.metrics.borderRadiusMedium,
 						padding: theme.metrics.cardPadding,
 					},
@@ -99,7 +101,7 @@ function LayoutTab() {
 								paddingVertical: pm.paddingVertical,
 								borderRadius: pm.borderRadius,
 								borderWidth: 1,
-								borderColor: i === 0 ? accent : theme.colors.divider,
+								borderColor: i === 0 ? accent : c.border,
 								backgroundColor: i === 0 ? accent : 'transparent',
 							}}
 						>
@@ -107,7 +109,7 @@ function LayoutTab() {
 								style={{
 									fontSize: pm.fontSize,
 									fontWeight: '700',
-									color: i === 0 ? theme.colors.textOnAccent : theme.colors.textPrimary,
+									color: i === 0 ? c.onAccent : c.text,
 								}}
 							>
 								{label}
@@ -115,10 +117,10 @@ function LayoutTab() {
 						</View>
 					))}
 				</View>
-				<Text style={{ color: theme.colors.textSecondary, fontSize: 12 }}>Live preview</Text>
+				<Text style={{ color: c.textSecondary, fontSize: 12 }}>Live preview</Text>
 			</View>
 
-			<Text style={[styles.section, { color: theme.colors.textSecondary }]}>PRESETS</Text>
+			<Text style={[styles.section, { color: c.textSecondary }]}>PRESETS</Text>
 			<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
 				{LAYOUT_PRESETS.map((p) => {
 					const active = (Object.keys(DEFAULT_LAYOUT) as (keyof LayoutSettings)[]).every(
@@ -134,51 +136,51 @@ function LayoutTab() {
 							style={[
 								styles.preset,
 								{
-									borderColor: active ? accent : theme.colors.divider,
+									borderColor: active ? accent : c.border,
 									backgroundColor: active ? accent + '30' : 'transparent',
 								},
 							]}
 						>
-							<Text style={{ color: theme.colors.textPrimary, fontWeight: active ? '700' : '500' }}>{p.name}</Text>
+							<Text style={{ color: c.text, fontWeight: active ? '700' : '500' }}>{p.name}</Text>
 						</TouchableOpacity>
 					)
 				})}
 			</ScrollView>
 
-			<Text style={[styles.section, { color: theme.colors.textSecondary }]}>PILLS</Text>
+			<Text style={[styles.section, { color: c.textSecondary }]}>PILLS</Text>
 			<Stepper label="Size" value={layout.pillScale} min={0.8} max={1.5} step={0.05} format={pct} onChange={(v) => set({ pillScale: v })} />
 			<Stepper label="Roundness" value={layout.pillRoundness} min={0} max={1} step={0.1} format={pct} onChange={(v) => set({ pillRoundness: v })} />
 
-			<Text style={[styles.section, { color: theme.colors.textSecondary }]}>CARDS</Text>
+			<Text style={[styles.section, { color: c.textSecondary }]}>CARDS</Text>
 			<Stepper label="Corner radius" value={layout.cornerScale} min={0.4} max={1.8} step={0.1} format={pct} onChange={(v) => set({ cornerScale: v })} />
 			<Stepper label="Padding" value={layout.paddingScale} min={0.6} max={1.6} step={0.1} format={pct} onChange={(v) => set({ paddingScale: v })} />
 
-			<Text style={[styles.section, { color: theme.colors.textSecondary }]}>TAB BAR</Text>
+			<Text style={[styles.section, { color: c.textSecondary }]}>TAB BAR</Text>
 			<Stepper label="Icon size" value={layout.tabIconSize} min={18} max={30} step={2} format={(v) => `${v}px`} onChange={(v) => set({ tabIconSize: v })} />
 			<View style={styles.stepRow}>
-				<Text style={[styles.stepLabel, { color: theme.colors.textPrimary }]}>Show labels</Text>
+				<Text style={[styles.stepLabel, { color: c.text }]}>Show labels</Text>
 				<Switch
 					value={layout.showTabLabels}
 					onValueChange={(v) => set({ showTabLabels: v })}
-					trackColor={{ true: accent, false: theme.colors.divider }}
+					trackColor={{ true: accent, false: c.border }}
 				/>
 			</View>
 
 			<TouchableOpacity
 				onPress={() => replaceLayout(DEFAULT_LAYOUT)}
 				disabled={isDefaultLayout(layout)}
-				style={[styles.resetBtn, { opacity: isDefaultLayout(layout) ? 0.4 : 1, borderColor: theme.colors.divider }]}
+				style={[styles.resetBtn, { opacity: isDefaultLayout(layout) ? 0.4 : 1, borderColor: c.border }]}
 			>
-				<Text style={{ color: theme.colors.textSecondary, fontWeight: '600' }}>Reset to default</Text>
+				<Text style={{ color: c.textSecondary, fontWeight: '600' }}>Reset to default</Text>
 			</TouchableOpacity>
 		</>
 	)
 }
 
 function VibesTab() {
-	const theme = useTheme()
-	const accent = theme.colors.accentPrimary
-	const vibes = useVibeStore((s) => s.vibes)
+	const c = useSheetColors()
+	const accent = c.accent
+		const vibes = useVibeStore((s) => s.vibes)
 	const authorName = useVibeStore((s) => s.authorName)
 	const setAuthorName = useVibeStore((s) => s.setAuthorName)
 	const saveVibe = useVibeStore((s) => s.saveVibe)
@@ -236,18 +238,18 @@ function VibesTab() {
 
 	const input = [
 		styles.input,
-		{ color: theme.colors.textPrimary, borderColor: theme.colors.divider, backgroundColor: theme.colors.controlBackground },
+		{ color: c.text, borderColor: c.border, backgroundColor: c.surfaceAlt },
 	]
 
 	return (
 		<>
-			<Text style={[styles.section, { color: theme.colors.textSecondary }]}>SAVE CURRENT LOOK</Text>
+			<Text style={[styles.section, { color: c.textSecondary }]}>SAVE CURRENT LOOK</Text>
 			<TextInput
 				style={input}
 				value={authorName}
 				onChangeText={setAuthorName}
 				placeholder="Your creator name"
-				placeholderTextColor={theme.colors.textMuted}
+				placeholderTextColor={c.textMuted}
 				maxLength={40}
 			/>
 			<View style={styles.inlineRow}>
@@ -256,27 +258,27 @@ function VibesTab() {
 					value={name}
 					onChangeText={setName}
 					placeholder="Vibe name"
-					placeholderTextColor={theme.colors.textMuted}
+					placeholderTextColor={c.textMuted}
 					maxLength={60}
 				/>
 				<TouchableOpacity style={[styles.primaryBtn, { backgroundColor: accent }]} onPress={handleSave}>
-					<Text style={{ color: theme.colors.textOnAccent, fontWeight: '700' }}>Save</Text>
+					<Text style={{ color: c.onAccent, fontWeight: '700' }}>Save</Text>
 				</TouchableOpacity>
 			</View>
-			<Text style={[styles.hint, { color: theme.colors.textMuted }]}>
+			<Text style={[styles.hint, { color: c.textMuted }]}>
 				Bundles your theme, layout and Smart Mix settings. It never includes your songs or listening data.
 			</Text>
 
-			<Text style={[styles.section, { color: theme.colors.textSecondary }]}>MY VIBES</Text>
-			{vibes.length === 0 && <Text style={[styles.hint, { color: theme.colors.textMuted }]}>Nothing saved yet.</Text>}
+			<Text style={[styles.section, { color: c.textSecondary }]}>MY VIBES</Text>
+			{vibes.length === 0 && <Text style={[styles.hint, { color: c.textMuted }]}>Nothing saved yet.</Text>}
 			{vibes.map(({ id, bundle }) => (
-				<View key={id} style={[styles.vibeRow, { borderColor: theme.colors.divider }]}>
+				<View key={id} style={[styles.vibeRow, { borderColor: c.border }]}>
 					<View style={{ flex: 1 }}>
-						<Text style={{ color: theme.colors.textPrimary, fontWeight: '700' }} numberOfLines={1}>{bundle.name}</Text>
-						<Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>by {bundle.author}</Text>
+						<Text style={{ color: c.text, fontWeight: '700' }} numberOfLines={1}>{bundle.name}</Text>
+						<Text style={{ color: c.textMuted, fontSize: 12 }} numberOfLines={1}>by {bundle.author}</Text>
 					</View>
 					<TouchableOpacity style={[styles.smallBtn, { backgroundColor: accent }]} onPress={() => handleApply(bundle)}>
-						<Text style={{ color: theme.colors.textOnAccent, fontWeight: '700', fontSize: 12 }}>Apply</Text>
+						<Text style={{ color: c.onAccent, fontWeight: '700', fontSize: 12 }}>Apply</Text>
 					</TouchableOpacity>
 					<TouchableOpacity style={styles.iconBtn} onPress={() => handleShare(bundle)} accessibilityLabel="Share vibe">
 						<Ionicons name="share-outline" size={20} color={accent} />
@@ -291,18 +293,18 @@ function VibesTab() {
 						}
 						accessibilityLabel="Delete vibe"
 					>
-						<Ionicons name="trash-outline" size={20} color={theme.colors.textMuted} />
+						<Ionicons name="trash-outline" size={20} color={c.textMuted} />
 					</TouchableOpacity>
 				</View>
 			))}
 
-			<Text style={[styles.section, { color: theme.colors.textSecondary }]}>IMPORT A VIBE</Text>
+			<Text style={[styles.section, { color: c.textSecondary }]}>IMPORT A VIBE</Text>
 			<TextInput
 				style={[...input, styles.importInput]}
 				value={importText}
 				onChangeText={setImportText}
 				placeholder="Paste a shared vibe here..."
-				placeholderTextColor={theme.colors.textMuted}
+				placeholderTextColor={c.textMuted}
 				multiline
 			/>
 			<TouchableOpacity
@@ -310,25 +312,25 @@ function VibesTab() {
 				onPress={handleImport}
 				disabled={!importText.trim()}
 			>
-				<Text style={{ color: theme.colors.textOnAccent, fontWeight: '700' }}>Import</Text>
+				<Text style={{ color: c.onAccent, fontWeight: '700' }}>Import</Text>
 			</TouchableOpacity>
 		</>
 	)
 }
 
 export function CustomizeSheet({ visible, onClose }: CustomizeSheetProps) {
-	const theme = useTheme()
+	const c = useSheetColors()
+	const accent = c.accent
 	const [tab, setTab] = useState<Tab>('layout')
-	const accent = theme.colors.accentPrimary
-
+	
 	return (
 		<Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
 			<View style={styles.overlay}>
-				<View style={[styles.sheet, { backgroundColor: theme.colors.backgroundGradient[0] }]}>
+				<View style={[styles.sheet, { backgroundColor: c.surface }]}>
 					<View style={styles.header}>
-						<Text style={[styles.title, { color: theme.colors.textPrimary }]}>Customize</Text>
+						<Text style={[styles.title, { color: c.text }]}>Customize</Text>
 						<TouchableOpacity onPress={onClose} accessibilityLabel="Close">
-							<Ionicons name="close" size={24} color={theme.colors.textPrimary} />
+							<Ionicons name="close" size={24} color={c.text} />
 						</TouchableOpacity>
 					</View>
 					<View style={styles.tabs}>
@@ -336,11 +338,11 @@ export function CustomizeSheet({ visible, onClose }: CustomizeSheetProps) {
 							<TouchableOpacity
 								key={t}
 								onPress={() => setTab(t)}
-								style={[styles.tab, { backgroundColor: tab === t ? accent : theme.colors.controlBackground }]}
+								style={[styles.tab, { backgroundColor: tab === t ? accent : c.surfaceAlt }]}
 							>
 								<Text
 									style={{
-										color: tab === t ? theme.colors.textOnAccent : theme.colors.textSecondary,
+										color: tab === t ? c.onAccent : c.textSecondary,
 										fontWeight: '700',
 									}}
 								>
