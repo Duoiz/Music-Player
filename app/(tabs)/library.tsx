@@ -154,12 +154,12 @@ export default function LibraryScreen() {
 								textShadowOffset: { width: 0, height: 2 },
 								textShadowRadius: 6,
 								textTransform: 'lowercase',
-						  }
+							}
 						: {
 								color: theme.colors.textPrimary,
 								fontSize: 28,
 								fontWeight: '800',
-						  },
+							},
 				]}
 			>
 				Library
@@ -428,7 +428,7 @@ export default function LibraryScreen() {
 							onMenuAction={handleMenuAction}
 							onPress={() => play(queue[index], queue)}
 						/>
-				  ))}
+					))}
 		</>
 	)
 
@@ -464,7 +464,7 @@ export default function LibraryScreen() {
 								onPress={() => play(track, downloadedTracks)}
 							/>
 						)
-				  })}
+					})}
 		</>
 	)
 
@@ -499,7 +499,7 @@ export default function LibraryScreen() {
 										onPress={() => play(track, playlist.tracks)}
 									/>
 								)
-						  })}
+							})}
 				</>
 			)
 		}
@@ -608,7 +608,7 @@ export default function LibraryScreen() {
 								</View>
 								<Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
 							</TouchableOpacity>
-					  ))}
+						))}
 			</>
 		)
 	}
