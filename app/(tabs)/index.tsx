@@ -8,6 +8,7 @@ import {
 	ActivityIndicator,
 	Platform,
 } from 'react-native'
+import { useIsFocused } from 'expo-router'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withSequence } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -22,6 +23,88 @@ import { downloadSong, deleteDownloadedSong } from '../../src/services/downloadS
 import { useDownloadStore } from '../../src/stores/downloadStore'
 import { PlaylistModal } from '../../src/components/PlaylistModal'
 import type { Song, Track } from '../../src/types'
+
+/**
+ * Animated "gas" backdrop for the empty-state hero card (Frutiger Aero only).
+ * Owns its own shared values and stops entirely when the tab is not focused or
+ * the hero is gone, so nothing keeps animating in the background.
+ */
+function HeroBlobs() {
+	const isFocused = useIsFocused()
+	const rotation1 = useSharedValue(0)
+	const rotation2 = useSharedValue(0)
+	const scale1 = useSharedValue(1)
+	const scale2 = useSharedValue(1)
+
+	React.useEffect(() => {
+		if (!isFocused) return
+		rotation1.value = withRepeat(withTiming(360, { duration: 15000, easing: Easing.linear }), -1, false)
+		rotation2.value = withRepeat(withTiming(-360, { duration: 20000, easing: Easing.linear }), -1, false)
+		scale1.value = withRepeat(
+			withSequence(
+				withTiming(1.3, { duration: 4000, easing: Easing.inOut(Easing.ease) }),
+				withTiming(1, { duration: 4000, easing: Easing.inOut(Easing.ease) })
+			),
+			-1,
+			true
+		)
+		scale2.value = withRepeat(
+			withSequence(
+				withTiming(1.4, { duration: 5000, easing: Easing.inOut(Easing.ease) }),
+				withTiming(1, { duration: 5000, easing: Easing.inOut(Easing.ease) })
+			),
+			-1,
+			true
+		)
+	}, [isFocused, rotation1, rotation2, scale1, scale2])
+
+	const animatedBlob1 = useAnimatedStyle(() => ({
+		transform: [
+			{ rotate: `${rotation1.value}deg` },
+			{ scaleX: 1.5 * scale1.value },
+			{ scaleY: scale1.value },
+		],
+	}))
+
+	const animatedBlob2 = useAnimatedStyle(() => ({
+		transform: [
+			{ rotate: `${rotation2.value}deg` },
+			{ scaleX: scale2.value },
+			{ scaleY: 1.2 * scale2.value },
+		],
+	}))
+
+	if (!isFocused) return null
+
+	return (
+		<>
+			<Animated.View style={[{ position: 'absolute', top: -60, left: -60, width: 320, height: 320 }, animatedBlob1]}>
+				<LinearGradient
+					colors={['rgba(0, 255, 200, 0.75)', 'transparent']}
+					start={{ x: 0, y: 0 }}
+					end={{ x: 1, y: 1 }}
+					style={{ width: '100%', height: '100%', borderRadius: 160 }}
+				/>
+			</Animated.View>
+			<Animated.View style={[{ position: 'absolute', bottom: -120, right: -80, width: 400, height: 400 }, animatedBlob2]}>
+				<LinearGradient
+					colors={['rgba(0, 150, 255, 0.85)', 'transparent']}
+					start={{ x: 1, y: 1 }}
+					end={{ x: 0, y: 0 }}
+					style={{ width: '100%', height: '100%', borderRadius: 200 }}
+				/>
+			</Animated.View>
+			{/* Glossy overlay to simulate refraction thickness */}
+			<LinearGradient
+				colors={['rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0)']}
+				start={{ x: 0, y: 0 }}
+				end={{ x: 0, y: 1 }}
+				style={StyleSheet.absoluteFillObject}
+				pointerEvents="none"
+			/>
+		</>
+	)
+}
 
 /**
  * Home / Search screen.
@@ -41,63 +124,6 @@ export default function SearchScreen() {
 	const [modalVisible, setModalVisible] = useState(false)
 	const [selectedSong, setSelectedSong] = useState<Song | null>(null)
 	const isDownloaded = useDownloadStore((s) => s.isDownloaded)
-
-	// 3D Gas Rotation Animation
-	const rotation1 = useSharedValue(0)
-	const rotation2 = useSharedValue(0)
-	const scale1 = useSharedValue(1)
-	const scale2 = useSharedValue(1)
-
-	React.useEffect(() => {
-		// Infinite slow spin
-		rotation1.value = withRepeat(
-			withTiming(360, { duration: 15000, easing: Easing.linear }),
-			-1,
-			false
-		)
-		rotation2.value = withRepeat(
-			withTiming(-360, { duration: 20000, easing: Easing.linear }),
-			-1,
-			false
-		)
-		// 3D breathing/wobble effect
-		scale1.value = withRepeat(
-			withSequence(
-				withTiming(1.3, { duration: 4000, easing: Easing.inOut(Easing.ease) }),
-				withTiming(1, { duration: 4000, easing: Easing.inOut(Easing.ease) })
-			),
-			-1,
-			true
-		)
-		scale2.value = withRepeat(
-			withSequence(
-				withTiming(1.4, { duration: 5000, easing: Easing.inOut(Easing.ease) }),
-				withTiming(1, { duration: 5000, easing: Easing.inOut(Easing.ease) })
-			),
-			-1,
-			true
-		)
-	}, [])
-
-	const animatedBlob1 = useAnimatedStyle(() => {
-		return {
-			transform: [
-				{ rotate: `${rotation1.value}deg` },
-				{ scaleX: 1.5 * scale1.value },
-				{ scaleY: scale1.value },
-			]
-		}
-	})
-
-	const animatedBlob2 = useAnimatedStyle(() => {
-		return {
-			transform: [
-				{ rotate: `${rotation2.value}deg` },
-				{ scaleX: scale2.value },
-				{ scaleY: 1.2 * scale2.value },
-			]
-		}
-	})
 
 	const handleMenuAction = useCallback((action: 'download' | 'playlist', song: Song) => {
 		if (action === 'playlist') {
@@ -165,48 +191,27 @@ export default function SearchScreen() {
 		[play, results]
 	)
 
+	const keyExtractor = useCallback((item: Song) => item.id, [])
+
+	const currentTrackId = currentTrack?.id
+	const renderItem = useCallback(
+		({ item }: { item: Song }) => (
+			<SongListItem
+				song={item}
+				onPress={handleSongPress}
+				isActive={currentTrackId === item.id}
+				onMenuAction={handleMenuAction}
+			/>
+		),
+		[handleSongPress, currentTrackId, handleMenuAction]
+	)
+
 	const renderSubHeader = () => (
 		<View style={styles.subHeader}>
 			{/* Empty state */}
 			{!hasSearched && (
 				<GlassCard style={[styles.heroCard, { overflow: 'hidden' as const }]} intensity="light">
-					{/* High viscosity gas / refraction effect */}
-					{theme.id === 'frutiger-aero' && (
-						<>
-							<Animated.View style={[{ position: 'absolute', top: -60, left: -60, width: 320, height: 320 }, animatedBlob1]}>
-								<LinearGradient
-									colors={['rgba(0, 255, 200, 0.75)', 'transparent']}
-									start={{ x: 0, y: 0 }}
-									end={{ x: 1, y: 1 }}
-									style={{
-										width: '100%',
-										height: '100%',
-										borderRadius: 160,
-									}}
-								/>
-							</Animated.View>
-							<Animated.View style={[{ position: 'absolute', bottom: -120, right: -80, width: 400, height: 400 }, animatedBlob2]}>
-								<LinearGradient
-									colors={['rgba(0, 150, 255, 0.85)', 'transparent']}
-									start={{ x: 1, y: 1 }}
-									end={{ x: 0, y: 0 }}
-									style={{
-										width: '100%',
-										height: '100%',
-										borderRadius: 200,
-									}}
-								/>
-							</Animated.View>
-							{/* Glossy overlay to simulate refraction thickness */}
-							<LinearGradient
-								colors={['rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0)']}
-								start={{ x: 0, y: 0 }}
-								end={{ x: 0, y: 1 }}
-								style={StyleSheet.absoluteFillObject}
-								pointerEvents="none"
-							/>
-						</>
-					)}
+					{theme.id === 'frutiger-aero' && <HeroBlobs />}
 					<Ionicons name="headset" size={48} color={theme.id === 'frutiger-aero' ? 'rgba(0,120,200,0.8)' : theme.colors.accentPrimary} />
 					<Text
 						style={[
@@ -293,23 +298,6 @@ export default function SearchScreen() {
 					>
 						Discover
 					</Text>
-					<Text
-						style={[
-							styles.subtitle,
-							{
-								color: theme.colors.textSecondary,
-								fontSize: theme.typography.bodySize,
-								fontWeight: theme.typography.bodyWeight,
-								fontFamily: theme.typography.fontFamily,
-								textShadowColor: theme.typography.textShadowColor,
-								textShadowOffset: theme.typography.textShadowOffset,
-								textShadowRadius: theme.typography.textShadowRadius,
-							},
-						]}
-					>
-						Search millions of songs
-					</Text>
-
 					<View style={styles.searchContainer}>
 						<SearchBar
 							onSearch={handleSearch}
@@ -330,19 +318,14 @@ export default function SearchScreen() {
 
 				<FlatList
 					data={results}
-					keyExtractor={(item) => item.id}
+					extraData={currentTrack?.id}
+					keyExtractor={keyExtractor}
 					ListHeaderComponent={renderSubHeader}
-					renderItem={({ item }) => (
-						<SongListItem
-							song={item}
-							onPress={handleSongPress}
-							isActive={currentTrack?.id === item.id}
-							onMenuAction={handleMenuAction}
-						/>
-					)}
-					initialNumToRender={10}
-					maxToRenderPerBatch={10}
-					windowSize={5}
+					renderItem={renderItem}
+					initialNumToRender={12}
+					maxToRenderPerBatch={8}
+					updateCellsBatchingPeriod={40}
+					windowSize={7}
 					removeClippedSubviews={Platform.OS === 'android'}
 					contentContainerStyle={styles.listContent}
 					showsVerticalScrollIndicator={false}
@@ -384,7 +367,7 @@ const styles = StyleSheet.create({
 	},
 	fixedHeader: {
 		paddingHorizontal: 16,
-		paddingTop: 16,
+		paddingTop: 12,
 		paddingBottom: 4,
 		gap: 4,
 	},
@@ -399,7 +382,8 @@ const styles = StyleSheet.create({
 		marginBottom: 16,
 	},
 	searchContainer: {
-		marginBottom: 16,
+		marginTop: 12,
+		marginBottom: 8,
 	},
 	errorCard: {
 		marginBottom: 16,
@@ -411,8 +395,8 @@ const styles = StyleSheet.create({
 	},
 	heroCard: {
 		alignItems: 'center',
-		marginTop: 24,
-		paddingVertical: 40,
+		marginTop: 12,
+		paddingVertical: 28,
 		gap: 12,
 	},
 	heroEmoji: {

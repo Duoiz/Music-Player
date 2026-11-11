@@ -9,6 +9,7 @@ import Animated, {
 	withDelay,
 	Easing,
 } from 'react-native-reanimated'
+import { useIsFocused } from 'expo-router'
 import { useTheme } from './ThemeProvider'
 
 interface ParticleProps {
@@ -97,9 +98,12 @@ function Particle({ index, color }: ParticleProps) {
 
 export function BackgroundParticles() {
 	const theme = useTheme()
-	
+	// Tab screens stay mounted after first visit; without this, every visited
+	// tab keeps running its own set of looping animations in the background.
+	const isFocused = useIsFocused()
+
 	// Only render for Frutiger Aero to save performance on other themes
-	if (theme.id !== 'frutiger-aero') return null
+	if (theme.id !== 'frutiger-aero' || !isFocused) return null
 
 	return (
 		<>
