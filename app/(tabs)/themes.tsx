@@ -1,10 +1,10 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import {
 	StyleSheet,
 	Text,
 	View,
-	ScrollView,
+	FlatList,
 	TouchableOpacity,
 	Alert,
 	Modal,
@@ -14,13 +14,18 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useTheme } from '../../src/components/ThemeProvider'
-import { GlassCard } from '../../src/components/GlassCard'
 import { ThemeCard } from '../../src/components/ThemeCard'
 import { BackgroundParticles } from '../../src/components/BackgroundParticles'
 import { useThemeStore } from '../../src/stores/themeStore'
-import { allThemes } from '../../src/themes'
+import { allThemes, freeThemes, premiumThemes } from '../../src/themes'
 import { importThemeFromJSON } from '../../src/utils/themeBuilder'
 import * as Haptics from 'expo-haptics'
+import type { ThemeStyle } from '../../src/types'
+
+type Filter = 'all' | 'mine' | 'builtin' | 'specialty'
+
+const featuredTheme: ThemeStyle | undefined =
+	allThemes.find((t) => t.isFeatured) || allThemes.find((t) => t.id === 'steampunk-chronograph')
 
 /**
  * Theme Store screen — browse and apply visual skins.
@@ -41,8 +46,7 @@ export default function ThemesScreen() {
 	const [importModalVisible, setImportModalVisible] = useState(false)
 	const [importJsonText, setImportJsonText] = useState('')
 
-	const freeThemes = allThemes.filter((t) => !t.isPremium)
-	const premiumThemes = allThemes.filter((t) => t.isPremium)
+	const [filter, setFilter] = useState<Filter>('all')
 
 	const handleThemePress = useCallback(
 		(themeId: string) => {
@@ -126,6 +130,140 @@ export default function ThemesScreen() {
 		Alert.alert('Skin Imported!', `"${parsed.name}" has been added and applied.`)
 	}, [importJsonText, addCustomTheme, setTheme])
 
+	const customIds = useMemo(() => new Set(customThemes.map((t) => t.id)), [customThemes])
+
+	const data = useMemo<ThemeStyle[]>(() => {
+		switch (filter) {
+			case 'mine':
+				return customThemes
+			case 'builtin':
+				return freeThemes
+			case 'specialty':
+				return premiumThemes
+			default:
+				return [...customThemes, ...freeThemes, ...premiumThemes]
+		}
+	}, [filter, customThemes])
+
+	const filters: { id: Filter; label: string }[] = [
+		{ id: 'all', label: 'All' },
+		...(customThemes.length > 0 ? [{ id: 'mine' as Filter, label: `Mine (${customThemes.length})` }] : []),
+		{ id: 'builtin', label: 'Built-in' },
+		{ id: 'specialty', label: 'Specialty' },
+	]
+
+	const accent = theme.colors.accentPrimary
+	const isAero = theme.id === 'frutiger-aero'
+
+	const renderItem = useCallback(
+		({ item }: { item: ThemeStyle }) => {
+			const isCustom = customIds.has(item.id)
+			return (
+				<View style={styles.cell}>
+					<ThemeCard
+						themeStyle={item}
+						isActive={activeThemeId === item.id}
+						isLocked={!isCustom && !!item.isPremium && !isThemeUnlocked(item.id)}
+						onPress={() => handleThemePress(item.id)}
+						onRemix={() => handleRemixTheme(item.id)}
+					/>
+					{isCustom && (
+						<View style={styles.customCardActions}>
+							<TouchableOpacity
+								onPress={() => handleEditCustomTheme(item.id)}
+								style={styles.customActionBtn}
+								hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+							>
+								<Ionicons name="pencil" size={14} color="#38bdf8" />
+							</TouchableOpacity>
+							<TouchableOpacity
+								onPress={() => handleDeleteCustomTheme(item.id, item.name)}
+								style={styles.customActionBtn}
+								hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+							>
+								<Ionicons name="trash-outline" size={14} color="#f87171" />
+							</TouchableOpacity>
+						</View>
+					)}
+				</View>
+			)
+		},
+		[
+			customIds,
+			activeThemeId,
+			isThemeUnlocked,
+			handleThemePress,
+			handleRemixTheme,
+			handleEditCustomTheme,
+			handleDeleteCustomTheme,
+		]
+	)
+
+	const renderListHeader = () => {
+		if (filter === 'specialty' && !isPremiumUser) {
+			return (
+				<TouchableOpacity
+					style={[styles.unlockRow, { borderColor: accent }]}
+					onPress={() => {
+						Alert.alert(
+							'Unlock Premium',
+							'In the full version, this connects to a payment provider. For now, tap OK to unlock all specialty themes.',
+							[
+								{ text: 'Cancel', style: 'cancel' },
+								{ text: 'OK', onPress: unlockPremium },
+							]
+						)
+					}}
+				>
+					<Ionicons name="lock-open-outline" size={16} color={accent} />
+					<Text style={[styles.unlockText, { color: accent }]}>Unlock all specialty skins</Text>
+				</TouchableOpacity>
+			)
+		}
+
+		if (filter === 'all' && featuredTheme) {
+			const isFeaturedActive = activeThemeId === featuredTheme.id
+			return (
+				<LinearGradient
+					colors={['#2E1E14', '#19110B']}
+					start={{ x: 0, y: 0 }}
+					end={{ x: 1, y: 1 }}
+					style={styles.featuredRow}
+				>
+					<Ionicons name="flame" size={18} color="#F5D061" />
+					<View style={styles.featuredInfo}>
+						<Text style={styles.featuredBadgeText}>SKIN OF THE WEEK</Text>
+						<Text style={styles.featuredTitle} numberOfLines={1}>
+							{featuredTheme.name}
+						</Text>
+					</View>
+					<TouchableOpacity
+						activeOpacity={0.85}
+						onPress={() => {
+							Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+							setTheme(featuredTheme.id)
+						}}
+						style={[styles.featuredBtn, isFeaturedActive && styles.featuredBtnActive]}
+					>
+						<Text style={[styles.featuredBtnText, isFeaturedActive && styles.featuredBtnTextActive]}>
+							{isFeaturedActive ? 'Active' : 'Apply'}
+						</Text>
+					</TouchableOpacity>
+					<TouchableOpacity
+						activeOpacity={0.85}
+						onPress={() => handleRemixTheme(featuredTheme.id)}
+						style={styles.featuredBtn}
+						accessibilityLabel="Remix this skin"
+					>
+						<Ionicons name="git-branch-outline" size={15} color="#FFE082" />
+					</TouchableOpacity>
+				</LinearGradient>
+			)
+		}
+
+		return null
+	}
+
 	return (
 		<LinearGradient
 			colors={theme.colors.backgroundGradient as [string, string, ...string[]]}
@@ -135,261 +273,12 @@ export default function ThemesScreen() {
 		>
 			<BackgroundParticles />
 			<SafeAreaView style={styles.safeArea} edges={['top']}>
-				<ScrollView
-					contentContainerStyle={styles.scrollContent}
-					showsVerticalScrollIndicator={false}
-				>
-					<Text
-						style={[
-							styles.title,
-							{
-								color: theme.colors.textPrimary,
-								fontSize: 28,
-								fontWeight: theme.typography.titleWeight,
-								fontFamily: theme.typography.fontFamily,
-								textShadowColor: theme.typography.textShadowColor,
-								textShadowOffset: theme.typography.textShadowOffset,
-								textShadowRadius: theme.typography.textShadowRadius,
-							},
-						]}
-					>
-						Themes
-					</Text>
-					<Text
-						style={[
-							styles.subtitle,
-							{
-								color: theme.colors.textSecondary,
-								fontSize: theme.typography.bodySize,
-							},
-						]}
-					>
-						Customize your player's look and feel
-					</Text>
-
-					{/* Skin Studio Hero Banner */}
-					<TouchableOpacity
-						activeOpacity={0.85}
-						onPress={() => router.push('/skin-creator')}
-						style={styles.studioBannerWrapper}
-					>
-						<LinearGradient
-							colors={
-								theme.id === 'frutiger-aero'
-									? ['rgba(0, 200, 255, 0.45)', 'rgba(64, 255, 208, 0.35)']
-									: ['rgba(56, 189, 248, 0.3)', 'rgba(168, 85, 247, 0.3)']
-							}
-							start={{ x: 0, y: 0 }}
-							end={{ x: 1, y: 1 }}
-							style={[
-								styles.studioBanner,
-								{
-									borderColor: theme.colors.accentPrimary,
-									borderRadius: theme.metrics.borderRadiusLarge + 4,
-								},
-							]}
-						>
-							<View style={styles.studioBannerLeft}>
-								<View style={[styles.studioIconBadge, { backgroundColor: `${theme.colors.accentPrimary}35` }]}>
-									<Ionicons name="sparkles" size={24} color={theme.colors.accentPrimary} />
-								</View>
-								<View style={styles.studioBannerText}>
-									<Text style={[styles.studioBannerTitle, { color: theme.colors.textPrimary }]}>
-										Skin Studio
-									</Text>
-									<Text style={[styles.studioBannerSubtitle, { color: theme.colors.textSecondary }]}>
-										Create, customize, and preview skins
-									</Text>
-								</View>
-							</View>
-							<Ionicons name="chevron-forward-circle" size={28} color={theme.colors.accentPrimary} />
-						</LinearGradient>
-					</TouchableOpacity>
-
-					{/* Curated Discovery: Skin of the Week Showcase */}
-					{(() => {
-						const featuredTheme =
-							allThemes.find((t) => t.isFeatured) ||
-							allThemes.find((t) => t.id === 'steampunk-chronograph')
-						if (!featuredTheme) return null
-
-						const isFeaturedActive = activeThemeId === featuredTheme.id
-
-						return (
-							<View style={styles.featuredShowcaseContainer}>
-								<LinearGradient
-									colors={['#2E1E14', '#19110B']}
-									start={{ x: 0, y: 0 }}
-									end={{ x: 1, y: 1 }}
-									style={styles.featuredCard}
-								>
-									{/* Top Badge Row */}
-									<View style={styles.featuredHeaderRow}>
-										<View style={styles.featuredBadge}>
-											<Ionicons name="flame" size={13} color="#F5D061" />
-											<Text style={styles.featuredBadgeText}>SKIN OF THE WEEK</Text>
-										</View>
-										<View style={styles.metricsBadge}>
-											<Ionicons name="git-branch-outline" size={11} color="#D4AF37" />
-											<Text style={styles.metricsText}>
-												{featuredTheme.remixCount ?? 3420} Remixes
-											</Text>
-										</View>
-									</View>
-
-									{/* Title & Author */}
-									<Text style={styles.featuredTitle}>{featuredTheme.name}</Text>
-									<Text style={styles.featuredAuthor}>by {featuredTheme.author}</Text>
-									<Text style={styles.featuredDesc}>{featuredTheme.description}</Text>
-
-									{/* Hardware Affordance Chips */}
-									<View style={styles.hardwareChipsRow}>
-										<View style={styles.chip}>
-											<Text style={styles.chipText}>⚙️ Clockwork Cogs</Text>
-										</View>
-										<View style={styles.chip}>
-											<Text style={styles.chipText}>🎵 Turntable Vinyl</Text>
-										</View>
-										<View style={styles.chip}>
-											<Text style={styles.chipText}>🎚️ Audio-Reactive</Text>
-										</View>
-									</View>
-
-									{/* Actions */}
-									<View style={styles.featuredActionsRow}>
-										<TouchableOpacity
-											activeOpacity={0.85}
-											onPress={() => {
-												Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-												setTheme(featuredTheme.id)
-											}}
-											style={[
-												styles.featuredApplyBtn,
-												isFeaturedActive && styles.featuredApplyBtnActive,
-											]}
-										>
-											<Ionicons
-												name={isFeaturedActive ? 'checkmark-circle' : 'color-palette'}
-												size={16}
-												color={isFeaturedActive ? '#1A120B' : '#F5D061'}
-											/>
-											<Text
-												style={[
-													styles.featuredApplyText,
-													isFeaturedActive && styles.featuredApplyTextActive,
-												]}
-											>
-												{isFeaturedActive ? 'Active Skin' : 'Apply Skin'}
-											</Text>
-										</TouchableOpacity>
-
-										<TouchableOpacity
-											activeOpacity={0.85}
-											onPress={() => handleRemixTheme(featuredTheme.id)}
-											style={styles.featuredRemixBtn}
-										>
-											<Ionicons name="git-branch-outline" size={16} color="#FFE082" />
-											<Text style={styles.featuredRemixText}>Remix / Fork</Text>
-										</TouchableOpacity>
-									</View>
-								</LinearGradient>
-							</View>
-						)
-					})()}
-
-					{/* My Custom Skins (If any exist) */}
-					{customThemes.length > 0 && (
-						<View style={styles.customSection}>
-							<View style={styles.sectionHeaderRow}>
-								<Text
-									style={[
-										styles.sectionTitle,
-										{
-											color: theme.colors.textPrimary,
-											fontWeight: theme.typography.titleWeight,
-											fontFamily: theme.typography.fontFamily,
-										},
-									]}
-								>
-									My Custom Skins ({customThemes.length})
-								</Text>
-								<TouchableOpacity
-									onPress={() => setImportModalVisible(true)}
-									style={styles.importSkinHeaderBtn}
-								>
-									<Ionicons name="download-outline" size={14} color={theme.colors.accentPrimary} />
-									<Text style={[styles.importSkinHeaderText, { color: theme.colors.accentPrimary }]}>
-										Import
-									</Text>
-								</TouchableOpacity>
-							</View>
-
-							<View style={styles.themeGrid}>
-								{customThemes.map((t) => (
-									<View key={t.id} style={styles.customThemeCardContainer}>
-										<ThemeCard
-											themeStyle={t}
-											isActive={activeThemeId === t.id}
-											isLocked={false}
-											onPress={() => handleThemePress(t.id)}
-											onRemix={() => handleRemixTheme(t.id)}
-										/>
-										<View style={styles.customCardActions}>
-											<TouchableOpacity
-												onPress={() => handleEditCustomTheme(t.id)}
-												style={styles.customActionBtn}
-												hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-											>
-												<Ionicons name="pencil" size={14} color="#38bdf8" />
-											</TouchableOpacity>
-											<TouchableOpacity
-												onPress={() => handleDeleteCustomTheme(t.id, t.name)}
-												style={styles.customActionBtn}
-												hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-											>
-												<Ionicons name="trash-outline" size={14} color="#f87171" />
-											</TouchableOpacity>
-										</View>
-									</View>
-								))}
-							</View>
-						</View>
-					)}
-
-					{/* Free Themes */}
-					<Text
-						style={[
-							styles.sectionTitle,
-							{
-								color: theme.colors.textPrimary,
-								fontWeight: theme.typography.titleWeight,
-								fontFamily: theme.typography.fontFamily,
-								textShadowColor: theme.typography.textShadowColor,
-								textShadowOffset: theme.typography.textShadowOffset,
-								textShadowRadius: theme.typography.textShadowRadius,
-							},
-						]}
-					>
-						Built-in Skins
-					</Text>
-					<View style={styles.themeGrid}>
-						{freeThemes.map((t) => (
-							<ThemeCard
-								key={t.id}
-								themeStyle={t}
-								isActive={activeThemeId === t.id}
-								isLocked={false}
-								onPress={() => handleThemePress(t.id)}
-								onRemix={() => handleRemixTheme(t.id)}
-							/>
-						))}
-					</View>
-
-					{/* Premium Themes */}
-					<View style={styles.premiumHeader}>
+				{/* Pinned header: title, actions and filters stay visible while the grid scrolls */}
+				<View style={styles.header}>
+					<View style={styles.titleRow}>
 						<Text
 							style={[
-								styles.sectionTitle,
+								styles.title,
 								{
 									color: theme.colors.textPrimary,
 									fontWeight: theme.typography.titleWeight,
@@ -400,79 +289,75 @@ export default function ThemesScreen() {
 								},
 							]}
 						>
-							Specialty Skins
+							Themes
 						</Text>
-						{!isPremiumUser && (
+						<View style={styles.headerActions}>
 							<TouchableOpacity
-								style={[
-									styles.unlockAllBtn,
-									{ backgroundColor: theme.colors.accentPrimary },
-								]}
-								onPress={() => {
-									Alert.alert(
-										'Unlock Premium',
-										'In the full version, this connects to a payment provider. For now, tap OK to unlock all specialty themes.',
-										[
-											{ text: 'Cancel', style: 'cancel' },
-											{ text: 'OK', onPress: unlockPremium },
-										]
-									)
-								}}
+								onPress={() => setImportModalVisible(true)}
+								style={[styles.headerBtn, { borderColor: accent }]}
+								accessibilityLabel="Import skin code"
 							>
-								<Text style={[styles.unlockAllText, { color: theme.colors.textOnAccent }]}>
-									Unlock All
-								</Text>
+								<Ionicons name="download-outline" size={16} color={accent} />
+								<Text style={[styles.headerBtnText, { color: accent }]}>Import</Text>
 							</TouchableOpacity>
-						)}
-					</View>
-					<View style={styles.themeGrid}>
-						{premiumThemes.map((t) => (
-							<ThemeCard
-								key={t.id}
-								themeStyle={t}
-								isActive={activeThemeId === t.id}
-								isLocked={!isThemeUnlocked(t.id)}
-								onPress={() => handleThemePress(t.id)}
-								onRemix={() => handleRemixTheme(t.id)}
-							/>
-						))}
+							<TouchableOpacity
+								onPress={() => router.push('/skin-creator')}
+								style={[styles.headerBtn, { backgroundColor: accent, borderColor: accent }]}
+								accessibilityLabel="Open Skin Studio"
+							>
+								<Ionicons name="sparkles" size={16} color={theme.colors.textOnAccent} />
+								<Text style={[styles.headerBtnText, { color: theme.colors.textOnAccent }]}>Studio</Text>
+							</TouchableOpacity>
+						</View>
 					</View>
 
-					{/* Community Hub Footer */}
-					<GlassCard style={styles.ugcCard} intensity="light" variant={theme.id === 'frutiger-aero' ? 'dark' : 'default'}>
-						<Ionicons name="globe-outline" size={32} color={theme.colors.accentPrimary} />
-						<Text
-							style={[
-								styles.ugcTitle,
-								theme.id === 'frutiger-aero' ? {
-									color: 'rgba(120,230,255,0.95)',
-									fontFamily: 'Rajdhani_600SemiBold',
-								} : { color: theme.colors.textPrimary },
-							]}
-						>
-							Community Sharing
-						</Text>
-						<Text
-							style={[
-								styles.ugcSubtitle,
-								{ color: theme.colors.textSecondary },
-							]}
-						>
-							Export your custom skins from Skin Studio and share them with other beta testers via JSON code.
-						</Text>
-						<TouchableOpacity
-							onPress={() => setImportModalVisible(true)}
-							style={[styles.importBtn, { borderColor: theme.colors.accentPrimary }]}
-						>
-							<Ionicons name="download-outline" size={16} color={theme.colors.accentPrimary} />
-							<Text style={[styles.importBtnText, { color: theme.colors.accentPrimary }]}>
-								Import Skin Code
-							</Text>
-						</TouchableOpacity>
-					</GlassCard>
+					<View style={styles.filterRow}>
+						{filters.map((f) => {
+							const active = filter === f.id
+							return (
+								<TouchableOpacity
+									key={f.id}
+									onPress={() => {
+										Haptics.selectionAsync()
+										setFilter(f.id)
+									}}
+									style={[
+										styles.filterChip,
+										active
+											? { backgroundColor: accent }
+											: { backgroundColor: isAero ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.1)' },
+									]}
+								>
+									<Text
+										numberOfLines={1}
+										style={[
+											styles.filterText,
+											active
+												? { color: theme.colors.textOnAccent, fontWeight: '700' }
+												: { color: theme.colors.textSecondary },
+										]}
+									>
+										{f.label}
+									</Text>
+								</TouchableOpacity>
+							)
+						})}
+					</View>
+				</View>
 
-					<View style={{ height: 140 }} />
-				</ScrollView>
+				<FlatList
+					key={filter}
+					data={data}
+					numColumns={2}
+					keyExtractor={(t) => t.id}
+					renderItem={renderItem}
+					ListHeaderComponent={renderListHeader}
+					columnWrapperStyle={styles.columnWrapper}
+					contentContainerStyle={styles.gridContent}
+					initialNumToRender={6}
+					windowSize={5}
+					showsVerticalScrollIndicator={false}
+				/>
 			</SafeAreaView>
 
 			{/* Import Skin Modal */}
@@ -502,16 +387,10 @@ export default function ThemesScreen() {
 							multiline
 						/>
 						<View style={styles.modalActionRow}>
-							<TouchableOpacity
-								onPress={() => setImportModalVisible(false)}
-								style={styles.modalCancelBtn}
-							>
+							<TouchableOpacity onPress={() => setImportModalVisible(false)} style={styles.modalCancelBtn}>
 								<Text style={styles.modalCancelText}>Cancel</Text>
 							</TouchableOpacity>
-							<TouchableOpacity
-								onPress={handleImportSkin}
-								style={styles.modalConfirmBtn}
-							>
+							<TouchableOpacity onPress={handleImportSkin} style={styles.modalConfirmBtn}>
 								<Text style={styles.modalConfirmText}>Import & Apply</Text>
 							</TouchableOpacity>
 						</View>
@@ -523,96 +402,32 @@ export default function ThemesScreen() {
 }
 
 const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-	},
-	safeArea: {
-		flex: 1,
-	},
-	scrollContent: {
-		paddingHorizontal: 16,
-		paddingTop: 16,
-	},
-	title: {
-		letterSpacing: -0.5,
-	},
-	subtitle: {
-		marginBottom: 16,
-	},
-	studioBannerWrapper: {
-		marginBottom: 20,
-	},
-	studioBanner: {
+	container: { flex: 1 },
+	safeArea: { flex: 1 },
+
+	header: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 10 },
+	titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+	title: { fontSize: 26, letterSpacing: -0.5 },
+	headerActions: { flexDirection: 'row', gap: 8 },
+	headerBtn: {
 		flexDirection: 'row',
 		alignItems: 'center',
-		justifyContent: 'space-between',
-		paddingHorizontal: 16,
-		paddingVertical: 14,
-		borderWidth: 1.5,
-		shadowColor: '#00e5ff',
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.25,
-		shadowRadius: 10,
-		elevation: 4,
+		gap: 6,
+		paddingHorizontal: 12,
+		paddingVertical: 7,
+		borderRadius: 16,
+		borderWidth: 1,
 	},
-	studioBannerLeft: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 12,
-	},
-	studioIconBadge: {
-		width: 44,
-		height: 44,
-		borderRadius: 22,
-		alignItems: 'center',
-		justifyContent: 'center',
-	},
-	studioBannerText: {
-		gap: 2,
-	},
-	studioBannerTitle: {
-		fontSize: 16,
-		fontWeight: '700',
-	},
-	studioBannerSubtitle: {
-		fontSize: 12,
-	},
-	customSection: {
-		marginBottom: 16,
-	},
-	sectionHeaderRow: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		alignItems: 'center',
-		marginBottom: 12,
-	},
-	sectionTitle: {
-		fontSize: 18,
-		marginBottom: 12,
-	},
-	importSkinHeaderBtn: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 4,
-		paddingHorizontal: 10,
-		paddingVertical: 4,
-		borderRadius: 8,
-		backgroundColor: 'rgba(0, 229, 255, 0.12)',
-	},
-	importSkinHeaderText: {
-		fontSize: 12,
-		fontWeight: '700',
-	},
-	themeGrid: {
-		flexDirection: 'row',
-		flexWrap: 'wrap',
-		justifyContent: 'space-between',
-		marginBottom: 24,
-	},
-	customThemeCardContainer: {
-		width: '48%',
-		marginBottom: 12,
-	},
+	headerBtnText: { fontSize: 12, fontWeight: '700' },
+
+	filterRow: { flexDirection: 'row', gap: 6 },
+	filterChip: { flex: 1, paddingVertical: 8, borderRadius: 18, alignItems: 'center' },
+	filterText: { fontSize: 12 },
+
+	// Room for the floating mini-player + tab bar
+	gridContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 150 },
+	columnWrapper: { justifyContent: 'space-between' },
+	cell: { width: '48%', marginBottom: 12 },
 	customCardActions: {
 		flexDirection: 'row',
 		justifyContent: 'flex-end',
@@ -625,51 +440,49 @@ const styles = StyleSheet.create({
 		borderRadius: 6,
 		backgroundColor: 'rgba(255, 255, 255, 0.08)',
 	},
-	premiumHeader: {
+
+	unlockRow: {
 		flexDirection: 'row',
-		justifyContent: 'space-between',
 		alignItems: 'center',
+		justifyContent: 'center',
+		gap: 8,
+		paddingVertical: 10,
+		borderRadius: 12,
+		borderWidth: 1,
+		marginBottom: 12,
+		backgroundColor: 'rgba(0,0,0,0.15)',
+	},
+	unlockText: { fontSize: 13, fontWeight: '700' },
+
+	/* Skin of the Week (slim row) */
+	featuredRow: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 10,
+		paddingHorizontal: 12,
+		paddingVertical: 10,
+		borderRadius: 14,
+		borderWidth: 1,
+		borderColor: 'rgba(218, 165, 32, 0.4)',
 		marginBottom: 12,
 	},
-	unlockAllBtn: {
-		paddingHorizontal: 14,
-		paddingVertical: 7,
-		borderRadius: 12,
-	},
-	unlockAllText: {
-		fontSize: 12,
-		fontWeight: '700',
-	},
-	ugcCard: {
-		alignItems: 'center',
-		paddingVertical: 24,
-		paddingHorizontal: 16,
-		gap: 8,
-	},
-	ugcTitle: {
-		fontSize: 17,
-		fontWeight: '700',
-	},
-	ugcSubtitle: {
-		fontSize: 13,
-		textAlign: 'center',
-		lineHeight: 18,
-		marginBottom: 4,
-	},
-	importBtn: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 6,
-		paddingHorizontal: 14,
+	featuredInfo: { flex: 1 },
+	featuredBadgeText: { color: '#D4AF37', fontSize: 9, fontWeight: '800', letterSpacing: 0.6 },
+	featuredTitle: { color: '#F5D061', fontSize: 15, fontWeight: '800' },
+	featuredBtn: {
+		paddingHorizontal: 12,
 		paddingVertical: 8,
 		borderRadius: 10,
 		borderWidth: 1,
-		backgroundColor: 'rgba(0,0,0,0.15)',
+		borderColor: 'rgba(218, 165, 32, 0.6)',
+		backgroundColor: 'rgba(218, 165, 32, 0.15)',
+		alignItems: 'center',
+		justifyContent: 'center',
 	},
-	importBtnText: {
-		fontSize: 12,
-		fontWeight: '700',
-	},
+	featuredBtnActive: { backgroundColor: '#F5D061', borderColor: '#F5D061' },
+	featuredBtnText: { color: '#F5D061', fontSize: 12, fontWeight: '700' },
+	featuredBtnTextActive: { color: '#1A120B' },
+
 	modalOverlay: {
 		flex: 1,
 		backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -741,135 +554,4 @@ const styles = StyleSheet.create({
 		fontSize: 13,
 		fontWeight: '700',
 	},
-	/* Skin of the Week Showcase */
-	featuredShowcaseContainer: {
-		marginBottom: 20,
-	},
-	featuredCard: {
-		padding: 16,
-		borderRadius: 18,
-		borderWidth: 1.5,
-		borderColor: 'rgba(218, 165, 32, 0.4)',
-		shadowColor: '#DAA520',
-		shadowOffset: { width: 0, height: 4 },
-		shadowOpacity: 0.3,
-		shadowRadius: 12,
-		elevation: 6,
-	},
-	featuredHeaderRow: {
-		flexDirection: 'row',
-		justifyContent: 'space-between',
-		alignItems: 'center',
-		marginBottom: 8,
-	},
-	featuredBadge: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 4,
-		backgroundColor: 'rgba(218, 165, 32, 0.2)',
-		paddingHorizontal: 8,
-		paddingVertical: 3,
-		borderRadius: 6,
-		borderWidth: 0.8,
-		borderColor: '#DAA520',
-	},
-	featuredBadgeText: {
-		color: '#F5D061',
-		fontSize: 10,
-		fontWeight: '800',
-		letterSpacing: 0.5,
-	},
-	metricsBadge: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: 4,
-	},
-	metricsText: {
-		color: '#D4AF37',
-		fontSize: 11,
-		fontWeight: '600',
-	},
-	featuredTitle: {
-		color: '#F5D061',
-		fontSize: 18,
-		fontWeight: '800',
-		letterSpacing: 0.5,
-	},
-	featuredAuthor: {
-		color: '#D4AF37',
-		fontSize: 12,
-		marginTop: 2,
-	},
-	featuredDesc: {
-		color: '#B8860B',
-		fontSize: 12,
-		lineHeight: 16,
-		marginTop: 6,
-	},
-	hardwareChipsRow: {
-		flexDirection: 'row',
-		gap: 6,
-		marginTop: 10,
-		flexWrap: 'wrap',
-	},
-	chip: {
-		backgroundColor: 'rgba(218, 165, 32, 0.12)',
-		paddingHorizontal: 8,
-		paddingVertical: 4,
-		borderRadius: 8,
-		borderWidth: 0.8,
-		borderColor: 'rgba(218, 165, 32, 0.25)',
-	},
-	chipText: {
-		color: '#FFE082',
-		fontSize: 10,
-		fontWeight: '700',
-	},
-	featuredActionsRow: {
-		flexDirection: 'row',
-		gap: 10,
-		marginTop: 14,
-	},
-	featuredApplyBtn: {
-		flex: 1,
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'center',
-		gap: 6,
-		backgroundColor: 'rgba(218, 165, 32, 0.2)',
-		borderWidth: 1.5,
-		borderColor: '#DAA520',
-		paddingVertical: 10,
-		borderRadius: 10,
-	},
-	featuredApplyBtnActive: {
-		backgroundColor: '#F5D061',
-		borderColor: '#F5D061',
-	},
-	featuredApplyText: {
-		color: '#F5D061',
-		fontSize: 13,
-		fontWeight: '700',
-	},
-	featuredApplyTextActive: {
-		color: '#1A120B',
-	},
-	featuredRemixBtn: {
-		flex: 1,
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'center',
-		gap: 6,
-		backgroundColor: 'rgba(255, 255, 255, 0.08)',
-		borderWidth: 1,
-		borderColor: 'rgba(255, 255, 255, 0.2)',
-		paddingVertical: 10,
-		borderRadius: 10,
-	},
-	featuredRemixText: {
-		color: '#FFE082',
-		fontSize: 13,
-		fontWeight: '700',
-	},
 })
-
