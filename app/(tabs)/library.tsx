@@ -24,6 +24,8 @@ import { usePlayerStore } from '../../src/stores/playerStore'
 import { usePlaylistStore } from '../../src/stores/playlistStore'
 import { useDownloadStore } from '../../src/stores/downloadStore'
 import { useDeviceMediaStore } from '../../src/stores/deviceMediaStore'
+import { usePillMetrics } from '../../src/stores/layoutStore'
+import { LibraryHealthModal } from '../../src/components/LibraryHealthModal'
 import { useHapticFeedback } from '../../src/hooks/useHapticFeedback'
 import { downloadSong, deleteDownloadedSong } from '../../src/services/downloadService'
 import type { Song, Track } from '../../src/types'
@@ -343,6 +345,8 @@ export default function LibraryScreen() {
 
 	const accent = theme.colors.accentPrimary
 	const pillBackground = isAero ? 'rgba(0, 180, 255, 0.25)' : accent + '25'
+	const pm = usePillMetrics()
+	const [healthVisible, setHealthVisible] = useState(false)
 	const fieldBackground = isAero ? 'rgba(10, 45, 75, 0.55)' : theme.colors.controlBackground
 	const titleStyle = isAero
 		? {
@@ -392,25 +396,39 @@ export default function LibraryScreen() {
 		opts?: { loading?: boolean; disabled?: boolean }
 	) => (
 		<TouchableOpacity
-			style={[styles.pill, { backgroundColor: pillBackground, borderColor: accent }]}
+			style={[
+				styles.pill,
+				{
+					backgroundColor: pillBackground,
+					borderColor: accent,
+					paddingHorizontal: pm.paddingHorizontal,
+					paddingVertical: pm.paddingVertical,
+					borderRadius: pm.borderRadius,
+				},
+			]}
 			onPress={onPress}
 			disabled={opts?.disabled}
 		>
 			{opts?.loading ? (
 				<ActivityIndicator size="small" color={accent} />
 			) : (
-				<Ionicons name={icon} size={15} color={accent} />
+				<Ionicons name={icon} size={pm.iconSize} color={accent} />
 			)}
-			<Text style={[styles.pillText, { color: accent }]}>{label}</Text>
+			<Text style={[styles.pillText, { color: accent, fontSize: pm.fontSize }]}>{label}</Text>
 		</TouchableOpacity>
 	)
 
 	const renderHeaderActions = () => {
 		if (activeTab === 'device') {
-			return pill('refresh', isScanning ? 'Scanning' : 'Scan', handleScanDevice, {
-				loading: isScanning,
-				disabled: isScanning,
-			})
+			return (
+				<View style={styles.headerActionsRow}>
+					{deviceTracks.length > 0 && pill('shield-checkmark-outline', 'Check', () => setHealthVisible(true))}
+					{pill('refresh', isScanning ? 'Scanning' : 'Scan', handleScanDevice, {
+						loading: isScanning,
+						disabled: isScanning,
+					})}
+				</View>
+			)
 		}
 		if (activeTab === 'queue' && queue.length > 0) {
 			return pill('trash-outline', 'Clear', () => clearQueue())
@@ -661,6 +679,7 @@ export default function LibraryScreen() {
 			/>
 
 			<AutoPlaylistModal visible={autoPlaylistVisible} onClose={() => setAutoPlaylistVisible(false)} />
+			<LibraryHealthModal visible={healthVisible} onClose={() => setHealthVisible(false)} />
 		</LinearGradient>
 	)
 }

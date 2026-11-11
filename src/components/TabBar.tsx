@@ -6,6 +6,7 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTheme } from './ThemeProvider'
 import { MiniPlayer } from './MiniPlayer'
+import { useLayoutStore } from '../stores/layoutStore'
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated'
 import { GestureDetector, Gesture } from 'react-native-gesture-handler'
 import * as Haptics from 'expo-haptics'
@@ -16,6 +17,7 @@ import * as Haptics from 'expo-haptics'
  */
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 	const theme = useTheme()
+	const layout = useLayoutStore((s) => s.layout)
 	const insets = useSafeAreaInsets()
 
 	const [tabWidth, setTabWidth] = useState(0)
@@ -125,7 +127,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 						>
 							<Ionicons
 								name={icon as keyof typeof Ionicons.glyphMap}
-								size={22}
+								size={layout.tabIconSize}
 								color={isFocused ? theme.colors.tabBarActive : theme.colors.tabBarInactive}
 								style={[
 									styles.tabIcon,
@@ -137,7 +139,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 									}
 								]}
 							/>
-							<Text
+							{layout.showTabLabels && <Text
 								style={[
 									styles.tabLabel,
 									{
@@ -158,7 +160,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 								]}
 							>
 								{label}
-							</Text>
+							</Text>}
 						</TouchableOpacity>
 					)
 				})}

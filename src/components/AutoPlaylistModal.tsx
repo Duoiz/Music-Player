@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import {
 	Modal,
 	StyleSheet,
@@ -16,6 +16,7 @@ import { usePlaylistStore } from '../stores/playlistStore'
 import { useDownloadStore } from '../stores/downloadStore'
 import { useDeviceMediaStore } from '../stores/deviceMediaStore'
 import { useAutoPlaylistStore } from '../stores/autoPlaylistStore'
+import { usePillMetrics } from '../stores/layoutStore'
 import { useHapticFeedback } from '../hooks/useHapticFeedback'
 import { generateAutoPlaylist } from '../utils/playlistGenerator'
 import { formatTime } from '../utils/formatTime'
@@ -60,6 +61,7 @@ const COUNTS = [10, 15, 25, 40]
 
 export function AutoPlaylistModal({ visible, onClose }: AutoPlaylistModalProps) {
 	const theme = useTheme()
+	const pm = usePillMetrics()
 	const haptic = useHapticFeedback()
 
 	const play = usePlayerStore((s) => s.play)
@@ -77,6 +79,15 @@ export function AutoPlaylistModal({ visible, onClose }: AutoPlaylistModalProps) 
 	const [selectedCount, setSelectedCount] = useState<number>(15)
 	const [selectedSource, setSelectedSource] = useState<SongPoolSource>('all')
 	const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('')
+
+	const defaultConfig = useAutoPlaylistStore((s) => s.defaultConfig)
+	useEffect(() => {
+		if (!visible || !defaultConfig) return
+		setSelectedMood(defaultConfig.mood)
+		setSelectedCurve(defaultConfig.energyCurve)
+		setSelectedCount(defaultConfig.targetCount)
+		setSelectedSource(defaultConfig.sourcePool === 'playlist' ? 'all' : defaultConfig.sourcePool)
+	}, [visible, defaultConfig])
 
 	// Generated result
 	const [result, setResult] = useState<GeneratedPlaylistResult | null>(null)
@@ -197,6 +208,9 @@ export function AutoPlaylistModal({ visible, onClose }: AutoPlaylistModalProps) 
 										style={[
 											styles.pill,
 											{
+												paddingHorizontal: pm.paddingHorizontal,
+												paddingVertical: pm.paddingVertical,
+												borderRadius: pm.borderRadius,
 												backgroundColor: active
 													? theme.colors.accentPrimary
 													: theme.colors.controlBackground,
@@ -212,14 +226,15 @@ export function AutoPlaylistModal({ visible, onClose }: AutoPlaylistModalProps) 
 									>
 										<Ionicons
 											name={m.icon}
-											size={14}
+											size={pm.iconSize - 1}
 											color={active ? theme.colors.textOnAccent : theme.colors.textSecondary}
 										/>
 										<Text
 											style={[
 												styles.pillText,
 												{
-													color: active
+													fontSize: pm.fontSize,
+										color: active
 														? theme.colors.textOnAccent
 														: theme.colors.textPrimary,
 													fontWeight: active ? '700' : '500',

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { scanDeviceAudio } from '../services/mediaScannerService'
+import { useAutoPlaylistStore } from './autoPlaylistStore'
 import type { Track } from '../types'
 
 interface DeviceMediaStore {
@@ -27,6 +28,7 @@ export const useDeviceMediaStore = create<DeviceMediaStore>()(
 				set({ isScanning: true })
 				try {
 					const tracks = await scanDeviceAudio()
+					useAutoPlaylistStore.getState().batchEnsureMetadata(tracks)
 					set({
 						deviceTracks: tracks,
 						lastScannedAt: Date.now(),

@@ -2,17 +2,19 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { inferHeuristicMetadata } from '../utils/playlistGenerator'
-import type { Track, PlaylistSongMetadata, GeneratedPlaylistResult } from '../types'
+import type { Track, PlaylistSongMetadata, GeneratedPlaylistResult, PlaylistGenerationConfig } from '../types'
 
 interface AutoPlaylistStore {
 	songMetadata: Record<string, PlaylistSongMetadata>
 	lastGenerated: GeneratedPlaylistResult | null
+	defaultConfig: PlaylistGenerationConfig | null
 
 	getOrInitMetadata: (track: Track) => PlaylistSongMetadata
 	updateSongMetadata: (id: string, updates: Partial<PlaylistSongMetadata>) => void
 	recordPlay: (id: string) => void
 	batchEnsureMetadata: (tracks: Track[]) => void
 	setLastGenerated: (result: GeneratedPlaylistResult | null) => void
+	setDefaultConfig: (config: PlaylistGenerationConfig | null) => void
 }
 
 export const useAutoPlaylistStore = create<AutoPlaylistStore>()(
@@ -20,6 +22,7 @@ export const useAutoPlaylistStore = create<AutoPlaylistStore>()(
 		(set, get) => ({
 			songMetadata: {},
 			lastGenerated: null,
+			defaultConfig: null,
 
 			getOrInitMetadata: (track: Track) => {
 				const current = get().songMetadata[track.id]
@@ -102,6 +105,7 @@ export const useAutoPlaylistStore = create<AutoPlaylistStore>()(
 			},
 
 			setLastGenerated: (result) => set({ lastGenerated: result }),
+			setDefaultConfig: (config) => set({ defaultConfig: config }),
 		}),
 		{
 			name: 'auto-playlist-storage',

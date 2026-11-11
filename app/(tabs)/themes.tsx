@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { useTheme } from '../../src/components/ThemeProvider'
 import { ThemeCard } from '../../src/components/ThemeCard'
+import { CustomizeSheet } from '../../src/components/CustomizeSheet'
 import { BackgroundParticles } from '../../src/components/BackgroundParticles'
 import { useThemeStore } from '../../src/stores/themeStore'
 import { allThemes, freeThemes, premiumThemes } from '../../src/themes'
@@ -44,6 +45,7 @@ export default function ThemesScreen() {
 	const addCustomTheme = useThemeStore((s) => s.addCustomTheme)
 
 	const [importModalVisible, setImportModalVisible] = useState(false)
+	const [customizeVisible, setCustomizeVisible] = useState(false)
 	const [importJsonText, setImportJsonText] = useState('')
 
 	const [filter, setFilter] = useState<Filter>('all')
@@ -293,6 +295,13 @@ export default function ThemesScreen() {
 						</Text>
 						<View style={styles.headerActions}>
 							<TouchableOpacity
+								onPress={() => setCustomizeVisible(true)}
+								style={[styles.headerBtn, { borderColor: accent }]}
+								accessibilityLabel="Customize layout and vibes"
+							>
+								<Ionicons name="options-outline" size={16} color={accent} />
+							</TouchableOpacity>
+							<TouchableOpacity
 								onPress={() => setImportModalVisible(true)}
 								style={[styles.headerBtn, { borderColor: accent }]}
 								accessibilityLabel="Import skin code"
@@ -359,6 +368,8 @@ export default function ThemesScreen() {
 					showsVerticalScrollIndicator={false}
 				/>
 			</SafeAreaView>
+
+			<CustomizeSheet visible={customizeVisible} onClose={() => setCustomizeVisible(false)} />
 
 			{/* Import Skin Modal */}
 			<Modal
