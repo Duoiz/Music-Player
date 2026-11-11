@@ -1,10 +1,38 @@
+const path = require('path')
+require('dotenv').config({ path: path.resolve(__dirname, '.env') })
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') })
+
 const express = require('express')
 const cors = require('cors')
+const https = require('https')
 const { searchYouTubeMusic } = require('./services/search')
 const { extractStreamUrl } = require('./services/ytdlp')
+const { getSpectrumEnvelope } = require('./services/audioAnalysis')
 
 const app = express()
+app.set('trust proxy', true)
 const PORT = process.env.PORT || 3001
+
+const PROXY_URL = process.env.WEBSHARE_PROXY_URL || process.env.PROXY_URL || ''
+let proxyAgent = null
+
+async function getProxyAgent() {
+	if (!PROXY_URL) return undefined
+	if (!proxyAgent) {
+		try {
+			const mod = await import('https-proxy-agent')
+			const AgentClass = mod.HttpsProxyAgent || mod.default?.HttpsProxyAgent || mod.default
+			proxyAgent = new AgentClass(PROXY_URL)
+		} catch (err) {
+			console.error('[PROXY] Error initializing proxy agent:', err.message)
+		}
+	}
+	return proxyAgent
+}
+
+// Cache for stream URLs
+const streamUrlCache = new Map()
+const CACHE_TTL = 1000 * 60 * 60 * 2 // 2 hours
 
 // Middleware
 app.use(cors())
@@ -62,13 +90,150 @@ app.get('/api/stream/:videoId', async (req, res) => {
 		}
 
 		console.log(`[STREAM] Extracting stream for: ${videoId}`)
-		const streamInfo = await extractStreamUrl(videoId)
+		
+		let streamInfo = streamUrlCache.get(`info_${videoId}`);
+		if (!streamInfo) {
+			streamInfo = await extractStreamUrl(videoId)
+			streamUrlCache.set(`info_${videoId}`, streamInfo)
+			streamUrlCache.set(videoId, streamInfo.streamUrl)
+			setTimeout(() => {
+				streamUrlCache.delete(`info_${videoId}`)
+				streamUrlCache.delete(videoId)
+			}, CACHE_TTL)
+		}
+
 		console.log(`[STREAM] Success: ${streamInfo.metadata.title}`)
 
-		res.json(streamInfo)
+		// Override streamUrl with proxy endpoint because Google strictly enforces IP-locking
+		const responseInfo = { ...streamInfo }
+		const host = req.get('host') || `localhost:${PORT}`
+		const isLocal = host.includes('localhost') || host.includes('127.0.0.1')
+		const protocol = req.headers['x-forwarded-proto'] || (isLocal ? (req.secure ? 'https' : req.protocol) : 'https')
+		responseInfo.streamUrl = `${protocol}://${host}/api/proxy/${videoId}`
+
+		res.json(responseInfo)
 	} catch (error) {
 		console.error('[STREAM] Error:', error.message)
 		res.status(500).json({ error: 'Stream extraction failed', details: error.message })
+	}
+})
+
+// ============================================================
+// Proxy — Proxy audio through Webshare
+// ============================================================
+app.get('/api/proxy/:videoId', async (req, res) => {
+	const { videoId } = req.params;
+	try {
+		let streamUrl = streamUrlCache.get(videoId);
+		if (!streamUrl) {
+			console.log(`[PROXY] Cache miss for ${videoId}, extracting URL...`);
+			const info = await extractStreamUrl(videoId);
+			streamUrl = info.streamUrl;
+			streamUrlCache.set(videoId, streamUrl);
+			setTimeout(() => streamUrlCache.delete(videoId), CACHE_TTL);
+		}
+
+		let rangeHeader = req.headers.range;
+		const isDownload = req.query.download === 'true' || req.query.full === 'true' || req.headers['x-download'] === 'true';
+
+		// Only apply 1MB preview cap for streaming playback when explicitly requested as unbounded stream start (bytes=0-),
+		// and NEVER for download requests or requests without a partial range!
+		if (!isDownload && rangeHeader === 'bytes=0-') {
+			rangeHeader = 'bytes=0-1048575';
+		}
+
+
+		const requestHeaders = {
+			'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+		};
+		if (rangeHeader) {
+			requestHeaders['Range'] = rangeHeader;
+		}
+
+		let currentReq = null;
+		let currentRes = null;
+
+		const makeRequest = async (urlToFetch) => {
+			const agent = await getProxyAgent()
+			currentReq = https.get(urlToFetch, {
+				agent,
+				headers: requestHeaders,
+			}, (proxyRes) => {
+				currentRes = proxyRes;
+
+				// Handle redirects (301, 302, 303, 307, 308)
+				if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+					// Consume the response data to free up memory before redirecting
+					proxyRes.resume();
+					return makeRequest(proxyRes.headers.location);
+				}
+
+				res.status(proxyRes.statusCode);
+				
+				const headersToForward = ['content-type', 'content-length', 'content-range', 'accept-ranges'];
+				for (const header of headersToForward) {
+					if (proxyRes.headers[header]) {
+						res.setHeader(header, proxyRes.headers[header]);
+					}
+				}
+
+				proxyRes.pipe(res);
+			});
+
+			currentReq.on('error', (err) => {
+				console.error('[PROXY] Stream error:', err.message);
+				if (!res.headersSent) {
+					res.status(500).json({ error: 'Stream proxy failed' });
+				}
+			});
+		};
+
+		makeRequest(streamUrl);
+
+		req.on('close', () => {
+			if (currentReq) currentReq.destroy();
+			if (currentRes) currentRes.destroy();
+		});
+
+	} catch (error) {
+		console.error('[PROXY] Extraction error:', error.message);
+		if (!res.headersSent) {
+			res.status(500).json({ error: 'Extraction failed' });
+		}
+	}
+});
+
+// ============================================================
+// Spectrum Analysis — Real audio 16-band frequency envelope
+// ============================================================
+app.get('/api/spectrum/:videoId', async (req, res) => {
+	try {
+		const { videoId } = req.params
+		if (!videoId) {
+			return res.status(400).json({ error: 'Missing videoId' })
+		}
+
+		// 1. Resolve stream URL from cache or extract via yt-dlp
+		let streamUrl = null
+		const cachedStream = streamUrlCache.get(videoId)
+		if (cachedStream && Date.now() - cachedStream.timestamp < CACHE_TTL) {
+			streamUrl = cachedStream.streamUrl
+		} else {
+			const streamInfo = await extractStreamUrl(videoId)
+			streamUrl = streamInfo.streamUrl
+			streamUrlCache.set(videoId, {
+				streamUrl,
+				metadata: streamInfo.metadata,
+				timestamp: Date.now(),
+			})
+		}
+
+		// 2. Compute or retrieve cached spectrum envelope
+		const spectrum = await getSpectrumEnvelope(videoId, streamUrl)
+		res.json(spectrum)
+	} catch (error) {
+		console.error('[SPECTRUM] Analysis error:', error.message)
+		res.status(500).json({ error: 'Failed to analyze audio spectrum: ' + error.message })
 	}
 })
 
@@ -115,6 +280,7 @@ app.listen(PORT, '0.0.0.0', () => {
   │     GET /api/health                     │
   │     GET /api/search?q=<query>           │
   │     GET /api/stream/:videoId            │
+  │     GET /api/proxy/:videoId             │
   │     GET /api/themes                     │
   │                                         │
   └─────────────────────────────────────────┘

@@ -4,65 +4,48 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import { BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { useTheme } from './ThemeProvider'
 import { usePlayerStore } from '../stores/playerStore'
-import { formatTime } from '../utils/formatTime'
 
 /**
  * Persistent mini-player bar at the bottom of tab screens.
  * Shows current track info, play/pause, and a thin progress indicator.
  * Tap to navigate to full Now Playing screen.
  */
+const MiniPlayerProgressBar = React.memo(function MiniPlayerProgressBar() {
+	const theme = useTheme()
+	const position = usePlayerStore((s) => s.position)
+	const duration = usePlayerStore((s) => s.duration)
+	const progress = duration > 0 ? Math.min(Math.max((position / duration) * 100, 0), 100) : 0
+
+	return (
+		<View style={[styles.progressBar, { backgroundColor: theme.colors.progressTrack }]}>
+			<LinearGradient
+				colors={theme.colors.progressFillGradient as [string, string, ...string[]]}
+				start={{ x: 0, y: 0 }}
+				end={{ x: 1, y: 0 }}
+				style={[styles.progressFill, { width: `${progress}%` }]}
+			/>
+		</View>
+	)
+})
+
 export function MiniPlayer() {
 	const theme = useTheme()
 	const router = useRouter()
 	const currentTrack = usePlayerStore((s) => s.currentTrack)
 	const isPlaying = usePlayerStore((s) => s.isPlaying)
-	const position = usePlayerStore((s) => s.position)
-	const duration = usePlayerStore((s) => s.duration)
 	const play = usePlayerStore((s) => s.resume)
 	const pause = usePlayerStore((s) => s.pause)
-
-	const pulseOpacity = useSharedValue(1)
-
-	React.useEffect(() => {
-		if (theme.id === 'frutiger-aero' && isPlaying) {
-			pulseOpacity.value = withRepeat(
-				withSequence(
-					withTiming(0.4, { duration: 1000 }),
-					withTiming(1, { duration: 1000 })
-				),
-				-1,
-				true
-			)
-		} else {
-			pulseOpacity.value = 1
-		}
-	}, [isPlaying, theme.id])
-
-	const pulseStyle = useAnimatedStyle(() => ({
-		opacity: pulseOpacity.value,
-	}))
 
 	// Don't render if nothing is playing
 	if (!currentTrack) return null
 
-	const progress = duration > 0 ? (position / duration) * 100 : 0
-
-
 	const content = (
 		<>
-			{/* Progress bar (thin line at the top) */}
-			<View style={[styles.progressBar, { backgroundColor: theme.colors.progressTrack }]}>
-				<LinearGradient
-					colors={theme.colors.progressFillGradient as [string, string, ...string[]]}
-					start={{ x: 0, y: 0 }}
-					end={{ x: 1, y: 0 }}
-					style={[styles.progressFill, { width: `${progress}%` }]}
-				/>
-			</View>
+			{/* Isolated progress bar (only this updates on playback ticks) */}
+			<MiniPlayerProgressBar />
 
 			{/* Content */}
 			<View style={styles.content}>

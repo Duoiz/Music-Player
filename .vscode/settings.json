@@ -5,5 +5,8 @@
 		"source.fixAll": "always",
 		"source.organizeImports": "always"
 	},
-	"editor.wordWrap": "on"
+	"editor.wordWrap": "on",
+	"java.import.gradle.enabled": false,
+	"gradle.autoDetect": "off",
+	"java.gradle.buildServer.enabled": "off"
 }

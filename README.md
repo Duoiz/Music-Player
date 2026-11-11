@@ -4,13 +4,12 @@ A retro-inspired, glassy music player built with React Native and Expo, featurin
 
 ## 📋 Overview
 
-This is a **template-ready** music player design that captures the essence of Fruitiger Aero styling with:
+This is a **template-ready** music player design that captures the essence of Fruitiger Aero styling, enhanced with a high-performance audio visualizer:
 
-- Translucent glass effect (BlurView)
-- Soft gradient backgrounds (sky blue to light blue)
-- Smooth shadows and depth
-- Retro-inspired green accent color (#00B050, #92D050)
-- Clean, rounded UI elements
+- 🎨 **Fruitiger Aero Aesthetic**: Translucent glass effects (BlurView), soft gradients, and clean rounded UI elements.
+- ⚡ **Hardware-Accelerated Visualizer**: 60fps real-time audio spectrum visualization powered by `@shopify/react-native-skia` and `react-native-reanimated`.
+- 🎛️ **Visualizer Studio**: Interactive controls for size, bar density, and frequency triggers directly on the UI thread.
+- 🎵 **Multiple Visualizer Modes**: Radial, circle, linear-upper, and linear-mirrored layouts.
 
 Perfect for customizing with your own music player logic and design preferences.
 
@@ -167,9 +166,10 @@ To add real music functionality:
 
 ## 🔧 Key Dependencies
 
+- **@shopify/react-native-skia**: High-performance GPU-accelerated 2D graphics for the visualizer.
+- **react-native-reanimated**: UI-thread driven animations and shared values for 60fps visualization.
 - **expo-linear-gradient**: Smooth gradient backgrounds
 - **expo-blur**: Frosted glass effect
-- **react-native-reanimated**: For smooth animations (ready for expansion)
 - **react-native-track-player**: Music playback (ready for integration)
 
 ## 📚 File Modifications Guide
@@ -205,7 +205,6 @@ To add real music functionality:
    - Add lyrics display
    - Implement playlist view
    - Create favorite/like button
-   - Add equalizer visualization
 
 5. **Personalize Colors**
    - Create a theme system

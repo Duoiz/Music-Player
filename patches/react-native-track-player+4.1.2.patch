@@ -1,0 +1,746 @@
+diff --git a/node_modules/react-native-track-player/android/.gradle/9.2.0/checksums/checksums.lock b/node_modules/react-native-track-player/android/.gradle/9.2.0/checksums/checksums.lock
+new file mode 100644
+index 0000000..819212f
+Binary files /dev/null and b/node_modules/react-native-track-player/android/.gradle/9.2.0/checksums/checksums.lock differ
+diff --git a/node_modules/react-native-track-player/android/.gradle/9.2.0/fileChanges/last-build.bin b/node_modules/react-native-track-player/android/.gradle/9.2.0/fileChanges/last-build.bin
+new file mode 100644
+index 0000000..f76dd23
+Binary files /dev/null and b/node_modules/react-native-track-player/android/.gradle/9.2.0/fileChanges/last-build.bin differ
+diff --git a/node_modules/react-native-track-player/android/.gradle/9.2.0/fileHashes/fileHashes.bin b/node_modules/react-native-track-player/android/.gradle/9.2.0/fileHashes/fileHashes.bin
+new file mode 100644
+index 0000000..47c9adf
+Binary files /dev/null and b/node_modules/react-native-track-player/android/.gradle/9.2.0/fileHashes/fileHashes.bin differ
+diff --git a/node_modules/react-native-track-player/android/.gradle/9.2.0/fileHashes/fileHashes.lock b/node_modules/react-native-track-player/android/.gradle/9.2.0/fileHashes/fileHashes.lock
+new file mode 100644
+index 0000000..ab1de7e
+Binary files /dev/null and b/node_modules/react-native-track-player/android/.gradle/9.2.0/fileHashes/fileHashes.lock differ
+diff --git a/node_modules/react-native-track-player/android/.gradle/9.2.0/gc.properties b/node_modules/react-native-track-player/android/.gradle/9.2.0/gc.properties
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/react-native-track-player/android/.gradle/buildOutputCleanup/buildOutputCleanup.lock b/node_modules/react-native-track-player/android/.gradle/buildOutputCleanup/buildOutputCleanup.lock
+new file mode 100644
+index 0000000..58e978a
+Binary files /dev/null and b/node_modules/react-native-track-player/android/.gradle/buildOutputCleanup/buildOutputCleanup.lock differ
+diff --git a/node_modules/react-native-track-player/android/.gradle/buildOutputCleanup/cache.properties b/node_modules/react-native-track-player/android/.gradle/buildOutputCleanup/cache.properties
+new file mode 100644
+index 0000000..ce3f702
+--- /dev/null
++++ b/node_modules/react-native-track-player/android/.gradle/buildOutputCleanup/cache.properties
+@@ -0,0 +1,2 @@
++#Sat Sep 05 17:10:26 PST 2026
++gradle.version=9.2.0
+diff --git a/node_modules/react-native-track-player/android/.gradle/vcs-1/gc.properties b/node_modules/react-native-track-player/android/.gradle/vcs-1/gc.properties
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
+index b2409a0..75cbb62 100644
+--- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
++++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
+@@ -6,6 +6,10 @@ import android.os.Bundle
+ import android.os.IBinder
+ import android.support.v4.media.RatingCompat
+ import androidx.localbroadcastmanager.content.LocalBroadcastManager
++import android.media.audiofx.Equalizer
++import android.media.audiofx.AudioEffect
++import android.media.audiofx.LoudnessEnhancer
++import android.util.Log
+ import com.doublesymmetry.kotlinaudio.models.Capability
+ import com.doublesymmetry.kotlinaudio.models.RepeatMode
+ import com.doublesymmetry.trackplayer.extensions.NumberExt.Companion.toMilliseconds
+@@ -59,6 +63,9 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+             }
+ 
+             isServiceBound = true
++            if (isEqEnabled) {
++                obtainEqualizer()
++            }
+         }
+     }
+ 
+@@ -119,6 +126,173 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+     }
+ 
+     /* ****************************** API ****************************** */
++
++    private var equalizer: Equalizer? = null
++    private var loudnessEnhancer: LoudnessEnhancer? = null
++    private var currentSessionId: Int = 0
++    private var isEqEnabled: Boolean = false
++    private var cachedBands: DoubleArray? = null
++    private var eqGainCompensationMb: Int = 350 // +3.5 dB compensation for Android EQ headroom attenuation
++
++    private fun obtainEqualizer(): Equalizer? {
++        if (!isServiceBound) {
++            Log.d("RNTP_EQ", "obtainEqualizer: service not bound yet")
++            return equalizer
++        }
++
++        val sessionId = musicService.getAudioSessionId()
++        Log.i("RNTP_EQ", "obtainEqualizer: audioSessionId=$sessionId, currentSessionId=$currentSessionId")
++
++        if (sessionId == 0) {
++            Log.w("RNTP_EQ", "audioSessionId is 0, player may not be actively playing yet")
++            return equalizer
++        }
++
++        if (equalizer != null && currentSessionId == sessionId) {
++            return equalizer
++        }
++
++        // Session ID changed or new equalizer needed — release old one
++        try {
++            if (currentSessionId != 0) {
++                val closeIntent = Intent(AudioEffect.ACTION_CLOSE_AUDIO_EFFECT_CONTROL_SESSION).apply {
++                    putExtra(AudioEffect.EXTRA_AUDIO_SESSION, currentSessionId)
++                    putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
++                }
++                context.sendBroadcast(closeIntent)
++            }
++            equalizer?.release()
++            loudnessEnhancer?.release()
++            equalizer = null
++            loudnessEnhancer = null
++            Log.i("RNTP_EQ", "Released previous equalizer and loudnessEnhancer for session $currentSessionId")
++        } catch (e: Exception) {
++            Log.w("RNTP_EQ", "Error releasing old equalizer/enhancer: ${e.message}")
++        }
++
++        return try {
++            // Priority 0 is standard priority and required by Samsung & standard HALs
++            val newEq = Equalizer(0, sessionId)
++            currentSessionId = sessionId
++
++            // Broadcast open audio effect session to notify Bluetooth & audio routing stack
++            val openIntent = Intent(AudioEffect.ACTION_OPEN_AUDIO_EFFECT_CONTROL_SESSION).apply {
++                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, sessionId)
++                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
++            }
++            context.sendBroadcast(openIntent)
++
++            val range = newEq.bandLevelRange
++            val minLevel = range?.get(0)?.toInt() ?: -1500
++            val maxLevel = range?.get(1)?.toInt() ?: 1500
++            val numBands = newEq.numberOfBands.toInt()
++            Log.i("RNTP_EQ", "Created Equalizer on session $sessionId — bands=$numBands, range=[$minLevel, $maxLevel]")
++
++            // Apply cached bands before enabling
++            cachedBands?.let { bands ->
++                for (i in 0 until Math.min(numBands, bands.size)) {
++                    val millibels = (bands[i] * 100.0).toInt().coerceIn(minLevel, maxLevel).toShort()
++                    try {
++                        newEq.setBandLevel(i.toShort(), millibels)
++                        Log.d("RNTP_EQ", "Band[$i] set to $millibels mB (${bands[i]} dB)")
++                    } catch (e: Exception) {
++                        Log.w("RNTP_EQ", "Failed to set band $i: ${e.message}")
++                    }
++                }
++            }
++
++            newEq.enabled = isEqEnabled
++            Log.i("RNTP_EQ", "Equalizer enabled state set to $isEqEnabled")
++
++            // Initialize LoudnessEnhancer to offset Android's internal EQ headroom reduction
++            try {
++                val newEnhancer = LoudnessEnhancer(sessionId).apply {
++                    setTargetGain(eqGainCompensationMb)
++                    enabled = isEqEnabled
++                }
++                loudnessEnhancer = newEnhancer
++                Log.i("RNTP_EQ", "LoudnessEnhancer initialized on session $sessionId with +${eqGainCompensationMb}mB, enabled=$isEqEnabled")
++            } catch (e: Exception) {
++                Log.w("RNTP_EQ", "LoudnessEnhancer initialization warning: ${e.message}")
++            }
++
++            equalizer = newEq
++            newEq
++        } catch (e: Exception) {
++            Log.e("RNTP_EQ", "Failed to create Equalizer for session $sessionId: ${e.message}", e)
++            equalizer
++        }
++    }
++
++    @ReactMethod
++    fun setEqualizerBands(bands: ReadableArray, promise: Promise) { scope.launch {
++        try {
++            val doubleArray = DoubleArray(bands.size()) { i -> bands.getDouble(i) }
++            cachedBands = doubleArray
++            Log.i("RNTP_EQ", "setEqualizerBands: ${doubleArray.contentToString()}")
++
++            val eq = obtainEqualizer()
++            if (eq != null) {
++                val range = eq.bandLevelRange
++                val minLevel = range?.get(0)?.toInt() ?: -1500
++                val maxLevel = range?.get(1)?.toInt() ?: 1500
++                val numBands = eq.numberOfBands.toInt()
++                for (i in 0 until Math.min(numBands, doubleArray.size)) {
++                    val millibels = (doubleArray[i] * 100.0).toInt().coerceIn(minLevel, maxLevel).toShort()
++                    try {
++                        eq.setBandLevel(i.toShort(), millibels)
++                    } catch (e: Exception) {
++                        Log.w("RNTP_EQ", "Failed to set band $i: ${e.message}")
++                    }
++                }
++            }
++            promise.resolve(true)
++        } catch (e: Exception) {
++            Log.e("RNTP_EQ", "setEqualizerBands error: ${e.message}")
++            promise.reject("EQ_ERROR", e.message)
++        }
++    } }
++
++    @ReactMethod
++    fun setEqualizerEnabled(enabled: Boolean, promise: Promise) { scope.launch {
++        try {
++            isEqEnabled = enabled
++            Log.i("RNTP_EQ", "setEqualizerEnabled: $enabled")
++            val eq = obtainEqualizer()
++            if (eq != null) {
++                eq.enabled = enabled
++                Log.i("RNTP_EQ", "Equalizer.enabled set to $enabled on session $currentSessionId")
++            }
++            try {
++                loudnessEnhancer?.setTargetGain(eqGainCompensationMb)
++                loudnessEnhancer?.enabled = enabled
++                Log.i("RNTP_EQ", "LoudnessEnhancer.enabled set to $enabled on session $currentSessionId")
++            } catch (e: Exception) {
++                Log.w("RNTP_EQ", "LoudnessEnhancer update failed: ${e.message}")
++            }
++            promise.resolve(true)
++        } catch (e: Exception) {
++            Log.e("RNTP_EQ", "setEqualizerEnabled error: ${e.message}")
++            promise.reject("EQ_ERROR", e.message)
++        }
++    } }
++
++    @ReactMethod
++    fun setEqualizerGainCompensation(gainMb: Double, promise: Promise) { scope.launch {
++        try {
++            eqGainCompensationMb = gainMb.toInt().coerceIn(0, 1000)
++            Log.i("RNTP_EQ", "setEqualizerGainCompensation: $eqGainCompensationMb mB")
++            try {
++                loudnessEnhancer?.setTargetGain(eqGainCompensationMb)
++            } catch (e: Exception) {
++                Log.w("RNTP_EQ", "LoudnessEnhancer setTargetGain failed: ${e.message}")
++            }
++            promise.resolve(true)
++        } catch (e: Exception) {
++            Log.e("RNTP_EQ", "setEqualizerGainCompensation error: ${e.message}")
++            promise.reject("EQ_ERROR", e.message)
++        }
++    } }
+     override fun getConstants(): Map<String, Any> {
+         return HashMap<String, Any>().apply {
+             // Capabilities
+@@ -251,7 +425,7 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+     }
+ 
+     @ReactMethod
+-    fun updateOptions(data: ReadableMap?, callback: Promise) = scope.launch {
++    fun updateOptions(data: ReadableMap?, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         val options = Arguments.toBundle(data)
+@@ -261,10 +435,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         }
+ 
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun add(data: ReadableArray?, insertBeforeIndex: Int, callback: Promise) = scope.launch {
++    fun add(data: ReadableArray?, insertBeforeIndex: Int, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         try {
+@@ -282,10 +456,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         } catch (exception: Exception) {
+             rejectWithException(callback, exception)
+         }
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun load(data: ReadableMap?, callback: Promise) = scope.launch {
++    fun load(data: ReadableMap?, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+         if (data == null) {
+             callback.resolve(null)
+@@ -298,17 +472,17 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         } else {
+             callback.reject("invalid_track_object", "Track was not a dictionary type")
+         }
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun move(fromIndex: Int, toIndex: Int, callback: Promise) = scope.launch {
++    fun move(fromIndex: Int, toIndex: Int, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+         musicService.move(fromIndex, toIndex)
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun remove(data: ReadableArray?, callback: Promise) = scope.launch {
++    fun remove(data: ReadableArray?, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+         val inputIndexes = Arguments.toList(data)
+         if (inputIndexes != null) {
+@@ -328,10 +502,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+             musicService.remove(indexes)
+         }
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun updateMetadataForTrack(index: Int, map: ReadableMap?, callback: Promise) =
++    fun updateMetadataForTrack(index: Int, map: ReadableMap?, callback: Promise) {
+         scope.launch {
+             if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+@@ -346,9 +520,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+                 callback.resolve(null)
+             }
+         }
++    }
+ 
+     @ReactMethod
+-    fun updateNowPlayingMetadata(map: ReadableMap?, callback: Promise) = scope.launch {
++    fun updateNowPlayingMetadata(map: ReadableMap?, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         if (musicService.tracks.isEmpty())
+@@ -361,10 +536,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         }
+ 
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun clearNowPlayingMetadata(callback: Promise) = scope.launch {
++    fun clearNowPlayingMetadata(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         if (musicService.tracks.isEmpty())
+@@ -372,18 +547,18 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+ 
+         musicService.clearNotificationMetadata()
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun removeUpcomingTracks(callback: Promise) = scope.launch {
++    fun removeUpcomingTracks(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.removeUpcomingTracks()
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun skip(index: Int, initialTime: Float, callback: Promise) = scope.launch {
++    fun skip(index: Int, initialTime: Float, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.skip(index)
+@@ -393,10 +568,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         }
+ 
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun skipToNext(initialTime: Float, callback: Promise) = scope.launch {
++    fun skipToNext(initialTime: Float, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.skipToNext()
+@@ -406,10 +581,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         }
+ 
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun skipToPrevious(initialTime: Float, callback: Promise) = scope.launch {
++    fun skipToPrevious(initialTime: Float, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.skipToPrevious()
+@@ -419,10 +594,10 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         }
+ 
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun reset(callback: Promise) = scope.launch {
++    fun reset(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.stop()
+@@ -430,136 +605,137 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         musicService.clear()
+ 
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun play(callback: Promise) = scope.launch {
++    fun play(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.play()
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun pause(callback: Promise) = scope.launch {
++    fun pause(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.pause()
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun stop(callback: Promise) = scope.launch {
++    fun stop(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.stop()
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun seekTo(seconds: Float, callback: Promise) = scope.launch {
++    fun seekTo(seconds: Float, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.seekTo(seconds)
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun seekBy(offset: Float, callback: Promise) = scope.launch {
++    fun seekBy(offset: Float, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.seekBy(offset)
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun retry(callback: Promise) = scope.launch {
++    fun retry(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.retry()
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun setVolume(volume: Float, callback: Promise) = scope.launch {
++    fun setVolume(volume: Float, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.setVolume(volume)
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getVolume(callback: Promise) = scope.launch {
++    fun getVolume(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         callback.resolve(musicService.getVolume())
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun setRate(rate: Float, callback: Promise) = scope.launch {
++    fun setRate(rate: Float, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.setRate(rate)
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getRate(callback: Promise) = scope.launch {
++    fun getRate(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         callback.resolve(musicService.getRate())
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun setRepeatMode(mode: Int, callback: Promise) = scope.launch {
++    fun setRepeatMode(mode: Int, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.setRepeatMode(RepeatMode.fromOrdinal(mode))
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getRepeatMode(callback: Promise) = scope.launch {
++    fun getRepeatMode(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         callback.resolve(musicService.getRepeatMode().ordinal)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun setPlayWhenReady(playWhenReady: Boolean, callback: Promise) = scope.launch {
++    fun setPlayWhenReady(playWhenReady: Boolean, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         musicService.playWhenReady = playWhenReady
+         callback.resolve(null)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getPlayWhenReady(callback: Promise) = scope.launch {
++    fun getPlayWhenReady(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         callback.resolve(musicService.playWhenReady)
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getTrack(index: Int, callback: Promise) = scope.launch {
++    fun getTrack(index: Int, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         if (index >= 0 && index < musicService.tracks.size) {
+-            callback.resolve(Arguments.fromBundle(musicService.tracks[index].originalItem))
++            val item = musicService.tracks[index].originalItem
++            callback.resolve(if (item != null) Arguments.fromBundle(item) else null)
+         } else {
+             callback.resolve(null)
+         }
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getQueue(callback: Promise) = scope.launch {
++    fun getQueue(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         callback.resolve(Arguments.fromList(musicService.tracks.map { it.originalItem }))
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun setQueue(data: ReadableArray?, callback: Promise) = scope.launch {
++    fun setQueue(data: ReadableArray?, callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         try {
+@@ -569,61 +745,61 @@ class MusicModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
+         } catch (exception: Exception) {
+             rejectWithException(callback, exception)
+         }
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getActiveTrackIndex(callback: Promise) = scope.launch {
++    fun getActiveTrackIndex(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+         callback.resolve(
+             if (musicService.tracks.isEmpty()) null else musicService.getCurrentTrackIndex()
+         )
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getActiveTrack(callback: Promise) = scope.launch {
++    fun getActiveTrack(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+-        callback.resolve(
+-            if (musicService.tracks.isEmpty()) null
+-            else Arguments.fromBundle(
+-                musicService.tracks[musicService.getCurrentTrackIndex()].originalItem
+-            )
+-        )
+-    }
++        if (musicService.tracks.isEmpty()) {
++            callback.resolve(null)
++        } else {
++            val item = musicService.tracks[musicService.getCurrentTrackIndex()].originalItem
++            callback.resolve(if (item != null) Arguments.fromBundle(item) else null)
++        }
++    } }
+ 
+     @ReactMethod
+-    fun getDuration(callback: Promise) = scope.launch {
++    fun getDuration(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         callback.resolve(musicService.getDurationInSeconds())
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getBufferedPosition(callback: Promise) = scope.launch {
++    fun getBufferedPosition(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         callback.resolve(musicService.getBufferedPositionInSeconds())
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getPosition(callback: Promise) = scope.launch {
++    fun getPosition(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+ 
+         callback.resolve(musicService.getPositionInSeconds())
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getProgress(callback: Promise) = scope.launch {
++    fun getProgress(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+         var bundle = Bundle()
+         bundle.putDouble("duration", musicService.getDurationInSeconds());
+         bundle.putDouble("position", musicService.getPositionInSeconds());
+         bundle.putDouble("buffered", musicService.getBufferedPositionInSeconds());
+         callback.resolve(Arguments.fromBundle(bundle))
+-    }
++    } }
+ 
+     @ReactMethod
+-    fun getPlaybackState(callback: Promise) = scope.launch {
++    fun getPlaybackState(callback: Promise) { scope.launch {
+         if (verifyServiceBoundOrReject(callback)) return@launch
+         callback.resolve(Arguments.fromBundle(musicService.getPlayerStateBundle(musicService.state)))
+-    }
++    } }
+ }
+diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
+index afa6b0f..a339ea7 100644
+--- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
++++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/service/MusicService.kt
+@@ -79,6 +79,24 @@ class MusicService : HeadlessJsTaskService() {
+     val playbackError
+         get() = player.playbackError
+ 
++    fun getAudioSessionId(): Int {
++        if (!this::player.isInitialized) {
++            android.util.Log.d("RNTP_EQ", "getAudioSessionId: player is not initialized yet")
++            return 0
++        }
++        return try {
++            val method = player.javaClass.superclass?.getDeclaredMethod("getExoPlayer")
++            method?.isAccessible = true
++            val exo = method?.invoke(player) as? com.google.android.exoplayer2.ExoPlayer
++            val id = exo?.audioSessionId ?: 0
++            android.util.Log.i("RNTP_EQ", "getAudioSessionId: exo.audioSessionId=$id")
++            id
++        } catch (e: Exception) {
++            android.util.Log.e("RNTP_EQ", "getAudioSessionId error: ${e.message}", e)
++            0
++        }
++    }
++
+     val event
+         get() = player.event
+ 
+@@ -741,7 +759,7 @@ class MusicService : HeadlessJsTaskService() {
+ 
+     @MainThread
+     private fun emit(event: String, data: Bundle? = null) {
+-        reactNativeHost.reactInstanceManager.currentReactContext
++        reactContext
+             ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+             ?.emit(event, data?.let { Arguments.fromBundle(it) })
+     }
+@@ -751,7 +769,7 @@ class MusicService : HeadlessJsTaskService() {
+         val payload = Arguments.createArray()
+         data.forEach { payload.pushMap(Arguments.fromBundle(it)) }
+ 
+-        reactNativeHost.reactInstanceManager.currentReactContext
++        reactContext
+             ?.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+             ?.emit(event, payload)
+     }
+diff --git a/node_modules/react-native-track-player/lib/src/trackPlayer.d.ts b/node_modules/react-native-track-player/lib/src/trackPlayer.d.ts
+index 8a6d0a9..53baf00 100644
+--- a/node_modules/react-native-track-player/lib/src/trackPlayer.d.ts
++++ b/node_modules/react-native-track-player/lib/src/trackPlayer.d.ts
+@@ -12,6 +12,8 @@ import type { AddTrack, EventPayloadByEvent, NowPlayingMetadata, PlaybackState,
+  * @see https://rntp.dev/docs/api/functions/lifecycle
+  */
+ export declare function setupPlayer(options?: PlayerOptions): Promise<void>;
++export declare function setEqualizerBands(bands: number[]): Promise<boolean>;
++export declare function setEqualizerEnabled(enabled: boolean): Promise<boolean>;
+ /**
+  * Register the playback service. The service will run as long as the player runs.
+  */
+diff --git a/node_modules/react-native-track-player/lib/src/trackPlayer.js b/node_modules/react-native-track-player/lib/src/trackPlayer.js
+index 191e5de..a4d532d 100644
+--- a/node_modules/react-native-track-player/lib/src/trackPlayer.js
++++ b/node_modules/react-native-track-player/lib/src/trackPlayer.js
+@@ -32,6 +32,14 @@ function resolveImportedAsset(id) {
+ export async function setupPlayer(options = {}) {
+     return TrackPlayer.setupPlayer(options);
+ }
++export async function setEqualizerBands(bands) {
++    if (Platform.OS !== 'android') return false;
++    return TrackPlayer.setEqualizerBands(bands);
++}
++export async function setEqualizerEnabled(enabled) {
++    if (Platform.OS !== 'android') return false;
++    return TrackPlayer.setEqualizerEnabled(enabled);
++}
+ /**
+  * Register the playback service. The service will run as long as the player runs.
+  */
+diff --git a/node_modules/react-native-track-player/src/trackPlayer.ts b/node_modules/react-native-track-player/src/trackPlayer.ts
+index 6f6d723..b62f747 100644
+--- a/node_modules/react-native-track-player/src/trackPlayer.ts
++++ b/node_modules/react-native-track-player/src/trackPlayer.ts
+@@ -59,6 +59,16 @@ export async function setupPlayer(options: PlayerOptions = {}): Promise<void> {
+   return TrackPlayer.setupPlayer(options);
+ }
+ 
++export async function setEqualizerBands(bands: number[]): Promise<boolean> {
++  if (Platform.OS !== 'android') return false;
++  return TrackPlayer.setEqualizerBands(bands);
++}
++
++export async function setEqualizerEnabled(enabled: boolean): Promise<boolean> {
++  if (Platform.OS !== 'android') return false;
++  return TrackPlayer.setEqualizerEnabled(enabled);
++}
++
+ /**
+  * Register the playback service. The service will run as long as the player runs.
+  */

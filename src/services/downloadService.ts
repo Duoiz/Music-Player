@@ -32,36 +32,69 @@ export async function downloadSong(song: Song | Track): Promise<boolean> {
 			await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}downloads/`, { intermediates: true })
 		}
 
-		// 3. Download the file
+		// 3. Download the full file (avoiding any partial preview truncation)
+		const downloadUrl = streamInfo.streamUrl.includes('?')
+			? `${streamInfo.streamUrl}&download=true&full=true`
+			: `${streamInfo.streamUrl}?download=true&full=true`
+
 		const downloadResumable = FileSystem.createDownloadResumable(
-			streamInfo.streamUrl,
+			downloadUrl,
 			fileUri,
 			{
 				headers: {
 					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+					'x-download': 'true',
 				}
 			},
+
 			(downloadProgress) => {
 				const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite
 				store.setDownloadProgress(songId, progress)
 			}
 		)
 
-		const result = await downloadResumable.downloadAsync()
-		
-		if (!result || result.status !== 200) {
-			throw new Error(`Download failed with status ${result?.status}. URL was: ${streamInfo.streamUrl.substring(0, 50)}...`)
+		let result;
+		let retries = 5; // Retry up to 5 times if the connection drops
+
+		while (retries > 0) {
+			try {
+				// If we haven't started, or if we need to restart from scratch, use downloadAsync
+				// Wait, if it threw, we should use resumeAsync to pick up where it dropped!
+				if (!result) {
+					result = await downloadResumable.downloadAsync()
+				} else {
+					console.log(`[DOWNLOAD] Resuming download... (${retries} retries left)`)
+					result = await downloadResumable.resumeAsync()
+				}
+
+				if (result && (result.status === 200 || result.status === 206)) {
+					break; // Success!
+				} else if (result) {
+					throw new Error(`Download failed with status ${result.status}`)
+				}
+			} catch (err) {
+				console.log(`[DOWNLOAD] Interrupted at ${store.activeDownloads[songId] || 0}%`, err);
+				retries--;
+				if (retries === 0) {
+					throw new Error(`Download failed after multiple retries. URL was: ${streamInfo.streamUrl.substring(0, 50)}...`)
+				}
+				// Wait 2 seconds before resuming
+				await new Promise(resolve => setTimeout(resolve, 2000));
+				// Set result to something truthy so the next loop triggers resumeAsync()
+				result = 'resume_needed';
+			}
 		}
 
 		// 4. Save to store
+		const downloadedUri = typeof result === 'object' && result && 'uri' in result ? (result as any).uri : fileUri
 		store.addDownloadedTrack({
 			id: song.id,
-			url: result.uri, // Use the local URI
+			url: downloadedUri, // Use the local URI
 			title: song.title,
 			artist: song.artist,
 			artwork: ('thumbnail' in song ? song.thumbnail : song.artwork) || '',
 			duration: song.duration,
-			localFileUri: result.uri,
+			localFileUri: downloadedUri,
 			downloadedAt: Date.now(),
 		})
 

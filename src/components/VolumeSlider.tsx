@@ -2,7 +2,6 @@ import React, { useCallback, useEffect } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { StyleSheet, Text, View } from 'react-native'
 import { Slider } from 'react-native-awesome-slider'
-import { Knob } from 'react-native-knob'
 import { useSharedValue } from 'react-native-reanimated'
 import { useTheme } from './ThemeProvider'
 import { usePlayerStore } from '../stores/playerStore'
@@ -32,49 +31,17 @@ export function VolumeSlider() {
 
 	const volumeIcon = volume === 0 ? 'volume-mute' : volume < 0.3 ? 'volume-low' : volume < 0.7 ? 'volume-medium' : 'volume-high'
 
-	if (theme.id === 'neomorphism') {
-		return (
-			<View style={[styles.container, { justifyContent: 'center', paddingVertical: 16 }]}>
-				<Ionicons name={volumeIcon as any} size={20} color={theme.colors.textSecondary} style={{ position: 'absolute', left: 16 }} />
-				
-				<View style={[styles.neomorphKnobContainer, { 
-					backgroundColor: theme.colors.cardGradient[0],
-					shadowColor: theme.metrics.shadowHeavy.color,
-				}]}>
-					{/* Outer Drop Shadow */}
-					<View style={styles.neomorphOuterShadow} />
-					
-					{/* Top Light Highlight */}
-					<View style={styles.neomorphTopHighlight} />
-					
-					<Knob
-						margin={0}
-						padding={24}
-						strokeWidth={6}
-						radius={36}
-						value={volume * 100}
-						min={0}
-						max={100}
-						onValueChange={(val: number) => setVolume(val / 100)}
-						color={theme.colors.accentPrimary}
-						trackColor={'rgba(0,0,0,0.05)'}
-						backgroundColor={theme.colors.cardGradient[0]}
-					/>
-				</View>
-
-				<Text style={[styles.volValue, { position: 'absolute', right: 16, color: theme.colors.textSecondary }]}>
-					{Math.round(volume * 100)}%
-				</Text>
-			</View>
-		)
-	}
-
 	return (
 		<View style={[styles.container, theme.id === 'frutiger-aero' && styles.containerFrutiger]}>
 			{theme.id === 'frutiger-aero' ? (
 				<Text style={styles.volLabel}>VOL</Text>
 			) : (
-				<Ionicons name={volumeIcon as keyof typeof Ionicons.glyphMap} size={24} color={theme.colors.textPrimary} style={styles.icon} />
+				<Ionicons
+					name={volumeIcon as keyof typeof Ionicons.glyphMap}
+					size={20}
+					color={theme.id === 'neomorphism' ? theme.colors.textSecondary : theme.colors.textPrimary}
+					style={styles.icon}
+				/>
 			)}
 			<Slider
 				progress={progress}
@@ -82,9 +49,24 @@ export function VolumeSlider() {
 				maximumValue={max}
 				onSlidingComplete={handleSlidingComplete}
 				theme={{
-					maximumTrackTintColor: theme.id === 'frutiger-aero' ? 'rgba(0,50,100,0.45)' : theme.colors.progressTrack,
-					minimumTrackTintColor: theme.id === 'frutiger-aero' ? '#00bfff' : theme.colors.accentPrimary,
-					bubbleBackgroundColor: theme.id === 'frutiger-aero' ? '#0078d4' : theme.colors.accentPrimary,
+					maximumTrackTintColor:
+						theme.id === 'frutiger-aero'
+							? 'rgba(0,50,100,0.45)'
+							: theme.id === 'neomorphism'
+							? '#DCE0EB'
+							: theme.colors.progressTrack,
+					minimumTrackTintColor:
+						theme.id === 'frutiger-aero'
+							? '#00bfff'
+							: theme.id === 'neomorphism'
+							? '#FF5A5F'
+							: theme.colors.accentPrimary,
+					bubbleBackgroundColor:
+						theme.id === 'frutiger-aero'
+							? '#0078d4'
+							: theme.id === 'neomorphism'
+							? '#FF5A5F'
+							: theme.colors.accentPrimary,
 					bubbleTextColor: theme.colors.textOnAccent,
 				}}
 				containerStyle={[
@@ -93,7 +75,13 @@ export function VolumeSlider() {
 						borderRadius: 3,
 						borderWidth: 1,
 						borderColor: 'rgba(0,100,180,0.35)',
-					}
+					},
+					theme.id === 'neomorphism' && {
+						backgroundColor: '#DCE0EB',
+						borderRadius: 6,
+						borderWidth: 1,
+						borderColor: 'rgba(154, 167, 189, 0.45)',
+					},
 				]}
 				renderThumb={() => (
 					<View
@@ -108,16 +96,36 @@ export function VolumeSlider() {
 								shadowOpacity: 1,
 								shadowRadius: 8,
 								elevation: 8,
-							}
+							},
+							theme.id === 'neomorphism' && {
+								width: 18,
+								height: 18,
+								borderRadius: 9,
+								backgroundColor: '#E6E9F2',
+								borderWidth: 2,
+								borderColor: '#FFFFFF',
+								shadowColor: '#A3B1C6',
+								shadowOffset: { width: 2, height: 2 },
+								shadowOpacity: 0.8,
+								shadowRadius: 4,
+								elevation: 4,
+							},
 						]}
 					/>
 				)}
-				thumbWidth={14}
+				thumbWidth={theme.id === 'neomorphism' ? 18 : 14}
 				bubble={(value: number) => `${Math.round(value * 100)}%`}
 				style={styles.sliderOuter}
 			/>
-			{theme.id === 'frutiger-aero' ? (
-				<Text style={styles.volValue}>{Math.round(volume * 100)}%</Text>
+			{theme.id === 'frutiger-aero' || theme.id === 'neomorphism' ? (
+				<Text
+					style={[
+						styles.volValue,
+						theme.id === 'neomorphism' && { color: theme.colors.textSecondary, fontWeight: '700' },
+					]}
+				>
+					{Math.round(volume * 100)}%
+				</Text>
 			) : null}
 		</View>
 	)

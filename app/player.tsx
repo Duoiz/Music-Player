@@ -16,8 +16,18 @@ import { GlassCard } from '../src/components/GlassCard'
 import { ProgressBar } from '../src/components/ProgressBar'
 import { VolumeSlider } from '../src/components/VolumeSlider'
 import { BackgroundParticles } from '../src/components/BackgroundParticles'
+import { VinylAlbumArt } from '../src/components/skeuo/VinylAlbumArt'
+import { RotaryVolumeKnob } from '../src/components/skeuo/RotaryVolumeKnob'
+import { SteampunkCogVolume } from '../src/components/skeuo/SteampunkCogVolume'
+import { NeumorphicPlayButton } from '../src/components/controls/NeumorphicPlayButton'
+import { NeumorphicSurface } from '../src/components/surfaces/NeumorphicSurface'
+import { GlassCylinderCarousel } from '../src/components/glass/GlassCylinderCarousel'
 import { usePlayerStore } from '../src/stores/playerStore'
 import { useHapticFeedback } from '../src/hooks/useHapticFeedback'
+import { useAudioReactivity } from '../src/hooks/useAudioReactivity'
+import { AlbumBeatVisualizer } from '../src/components/AlbumBeatVisualizer'
+import { useAlbumGeometry } from '../src/hooks/useAlbumGeometry'
+import Animated from 'react-native-reanimated'
 import { extractImageColors } from '../src/utils/imageColors'
 import type { RepeatMode } from '../src/types'
 
@@ -35,9 +45,11 @@ export default function PlayerScreen() {
 	const haptic = useHapticFeedback()
 
 	const currentTrack = usePlayerStore((s) => s.currentTrack)
+	const queue = usePlayerStore((s) => s.queue)
 	const isPlaying = usePlayerStore((s) => s.isPlaying)
 	const repeatMode = usePlayerStore((s) => s.repeatMode)
 	const shuffleEnabled = usePlayerStore((s) => s.shuffleEnabled)
+	const playTrack = usePlayerStore((s) => s.play)
 	const play = usePlayerStore((s) => s.resume)
 	const pause = usePlayerStore((s) => s.pause)
 	const next = usePlayerStore((s) => s.next)
@@ -48,9 +60,39 @@ export default function PlayerScreen() {
 	const [bgColors, setBgColors] = useState<string[]>(
 		theme.colors.backgroundGradient
 	)
+	const [albumBox, setAlbumBox] = useState({ width: 0, height: 0, borderRadius: 0 })
+	const albumGeometry = useAlbumGeometry()
 
-	// Extract colors from album art for dynamic background
+	// Audio-reactive visual layer
+	const { glowAnimatedStyle, scaleAnimatedStyle } = useAudioReactivity(
+		theme.widgets?.audioReactivity
+	)
+
+	// Componentized Hardware Widget Affordances
+	const artworkWidget =
+		theme.widgets?.artworkDisplay ||
+		(theme.id === 'liquid-glass' || theme.id === 'frutiger-aero'
+			? 'glass-cylinder'
+			: theme.id === 'skeuomorphism' || theme.id === 'neomorphism'
+			? 'vinyl'
+			: 'floating-card')
+
+	const volumeWidget =
+		theme.widgets?.volumeControl ||
+		(theme.id === 'skeuomorphism' ? 'rotary-knob' : 'slider')
+
+	const buttonWidget =
+		theme.widgets?.playButton ||
+		(theme.id === 'neomorphism' || theme.id === 'skeuomorphism'
+			? 'neumorphic-convex'
+			: 'glossy-orb')
+
+	// Extract colors from album art for dynamic background (except neumorphism/skeuomorphism which require consistent chassis color)
 	useEffect(() => {
+		if (theme.id === 'neomorphism' || theme.id === 'skeuomorphism') {
+			setBgColors(theme.colors.backgroundGradient)
+			return
+		}
 		if (currentTrack?.artwork) {
 			extractImageColors(currentTrack.artwork).then((colors) => {
 				setBgColors([colors.primary, colors.secondary, colors.background])
@@ -58,7 +100,7 @@ export default function PlayerScreen() {
 		} else {
 			setBgColors(theme.colors.backgroundGradient)
 		}
-	}, [currentTrack?.artwork, theme.colors.backgroundGradient])
+	}, [currentTrack?.artwork, theme.colors.backgroundGradient, theme.id])
 
 	const handlePlayPause = useCallback(() => {
 		haptic.medium()
@@ -137,33 +179,100 @@ export default function PlayerScreen() {
 
 				{/* Player Content */}
 				<View style={styles.content}>
-					{/* Album Art */}
-					<GlassCard style={styles.albumCard} intensity="heavy">
-						{currentTrack?.artwork ? (
-							<Image
-								source={{ uri: currentTrack.artwork }}
-								style={[
-									styles.albumArt,
-									{ borderRadius: theme.metrics.borderRadiusMedium },
-								]}
-								contentFit="cover"
-								transition={300}
+					{/* Relative Anchor Parent for Album Box */}
+					<View style={styles.albumStageContainer}>
+						{/* 1. Absolute Visualizer Layer — Sits BEHIND the Album Art */}
+						{albumBox.width > 0 && artworkWidget !== 'glass-cylinder' && (
+							<AlbumBeatVisualizer
+								albumGeometry={albumGeometry}
+								albumWidth={albumBox.width}
+								albumHeight={albumBox.height}
+								albumBorderRadius={albumBox.borderRadius}
+								artworkColor={bgColors[0]}
+								isCircle={artworkWidget === 'vinyl'}
 							/>
-						) : (
-							<LinearGradient
-								colors={theme.colors.accentGradient as [string, string, ...string[]]}
-								start={{ x: 0, y: 0 }}
-								end={{ x: 1, y: 1 }}
-								style={[
-									styles.albumArt,
-									styles.albumPlaceholder,
-									{ borderRadius: theme.metrics.borderRadiusMedium },
-								]}
-							>
-								<Ionicons name="musical-notes" size={80} color="rgba(255,255,255,0.8)" />
-							</LinearGradient>
 						)}
-					</GlassCard>
+
+						{/* 2. Measured Album Art Element — Sits in FRONT of the Visualizer */}
+						<View
+							onLayout={(e) => {
+								const { width, height } = e.nativeEvent.layout
+								if (width > 0 && height > 0) {
+									const radius =
+										artworkWidget === 'vinyl'
+											? Math.min(width, height) / 2
+											: theme.metrics.borderRadiusMedium
+									albumGeometry.onAlbumLayout(e, radius)
+									const roundedW = Math.round(width)
+									const roundedH = Math.round(height)
+									const roundedR = Math.round(radius)
+									setAlbumBox((prev) => {
+										if (
+											prev.width === roundedW &&
+											prev.height === roundedH &&
+											prev.borderRadius === roundedR
+										) {
+											return prev
+										}
+										return { width: roundedW, height: roundedH, borderRadius: roundedR }
+									})
+								}
+							}}
+							style={styles.albumElementBox}
+						>
+							{artworkWidget === 'glass-cylinder' ? (
+								<GlassCylinderCarousel
+									queue={queue}
+									currentTrack={currentTrack}
+									onSelectTrack={playTrack}
+									themeId={theme.id}
+									artworkColor={bgColors[0]}
+								/>
+							) : artworkWidget === 'vinyl' ? (
+								<VinylAlbumArt
+									artwork={currentTrack?.artwork}
+									isPlaying={isPlaying}
+									themeId={theme.id}
+									accentColor={theme.colors.accentPrimary}
+								/>
+							) : (
+								<Animated.View
+									style={
+										theme.widgets?.audioReactivity?.target === 'scale'
+											? scaleAnimatedStyle
+											: undefined
+									}
+								>
+									<GlassCard style={styles.albumCard} intensity="heavy">
+										{currentTrack?.artwork ? (
+											<Image
+												source={{ uri: currentTrack.artwork }}
+												style={[
+													styles.albumArt,
+													{ borderRadius: theme.metrics.borderRadiusMedium },
+												]}
+												contentFit="cover"
+												transition={300}
+											/>
+										) : (
+											<LinearGradient
+												colors={theme.colors.accentGradient as [string, string, ...string[]]}
+												start={{ x: 0, y: 0 }}
+												end={{ x: 1, y: 1 }}
+												style={[
+													styles.albumArt,
+													styles.albumPlaceholder,
+													{ borderRadius: theme.metrics.borderRadiusMedium },
+												]}
+											>
+												<Ionicons name="musical-notes" size={80} color="rgba(255,255,255,0.8)" />
+											</LinearGradient>
+										)}
+									</GlassCard>
+								</Animated.View>
+							)}
+						</View>
+					</View>
 
 					{/* Song Info */}
 					<View style={styles.songInfo}>
@@ -231,74 +340,104 @@ export default function PlayerScreen() {
 						</TouchableOpacity>
 
 						{/* Previous */}
-						<TouchableOpacity
-							onPress={handlePrevious}
-							style={[
-								styles.controlButton,
-								{
-									backgroundColor: theme.colors.controlBackground,
-									borderRadius: 28,
-								},
-							]}
-						>
-							<Ionicons name="play-skip-back" size={28} color={theme.colors.controlIcon} />
-						</TouchableOpacity>
-
-						{/* Play / Pause */}
-						<TouchableOpacity
-							onPress={handlePlayPause}
-							style={[
-								styles.playButton,
-								theme.id === 'frutiger-aero' ? {
-									shadowColor: isPlaying ? 'rgba(255,50,50,0.6)' : 'rgba(0,255,100,0.5)',
-									shadowOffset: { width: 0, height: 4 },
-									shadowOpacity: 1,
-									shadowRadius: 10,
-									elevation: 6,
-								} : {
-									shadowColor: theme.metrics.shadowAccent.color,
-									shadowOffset: theme.metrics.shadowAccent.offset,
-									shadowOpacity: theme.metrics.shadowAccent.opacity,
-									shadowRadius: theme.metrics.shadowAccent.radius,
-									elevation: theme.metrics.shadowAccent.elevation,
-								},
-							]}
-						>
-							<LinearGradient
-								colors={
-									theme.id === 'frutiger-aero'
-										? isPlaying
-											? ['rgba(255,100,100,0.9)', 'rgba(200,30,30,0.95)']
-											: ['rgba(100,255,150,0.9)', 'rgba(20,200,80,0.95)']
-										: (theme.colors.accentGradient as [string, string, ...string[]])
-								}
-								start={{ x: 0, y: 0 }}
-								end={{ x: 1, y: 1 }}
+						{theme.id === 'neomorphism' ? (
+							<TouchableOpacity onPress={handlePrevious}>
+								<NeumorphicSurface borderRadius={28} elevation={4} style={styles.controlButton}>
+									<Ionicons name="play-skip-back" size={24} color={theme.colors.controlIcon} />
+								</NeumorphicSurface>
+							</TouchableOpacity>
+						) : (
+							<TouchableOpacity
+								onPress={handlePrevious}
 								style={[
-									styles.playButtonGradient,
-									theme.id === 'frutiger-aero' && {
-										borderWidth: 1.5,
-										borderColor: 'rgba(255,255,255,0.7)',
-									}
+									styles.controlButton,
+									{
+										backgroundColor: theme.colors.controlBackground,
+										borderRadius: 28,
+										borderWidth: theme.id === 'skeuomorphism' ? 1.5 : 0,
+										borderColor: 'rgba(255, 255, 255, 0.12)',
+									},
 								]}
 							>
-								<Ionicons name={isPlaying ? 'pause' : 'play'} size={36} color={theme.colors.textOnAccent} />
-							</LinearGradient>
-						</TouchableOpacity>
+								<Ionicons name="play-skip-back" size={28} color={theme.colors.controlIcon} />
+							</TouchableOpacity>
+						)}
+
+						{/* Play / Pause */}
+						{buttonWidget === 'neumorphic-convex' ? (
+							<NeumorphicPlayButton
+								isPlaying={isPlaying}
+								onPress={handlePlayPause}
+								accentColor={theme.colors.accentPrimary}
+								themeId={theme.id}
+								size={76}
+							/>
+						) : (
+							<TouchableOpacity
+								onPress={handlePlayPause}
+								style={[
+									styles.playButton,
+									theme.id === 'frutiger-aero' ? {
+										shadowColor: isPlaying ? 'rgba(255,50,50,0.6)' : 'rgba(0,255,100,0.5)',
+										shadowOffset: { width: 0, height: 4 },
+										shadowOpacity: 1,
+										shadowRadius: 10,
+										elevation: 6,
+									} : {
+										shadowColor: theme.metrics.shadowAccent.color,
+										shadowOffset: theme.metrics.shadowAccent.offset,
+										shadowOpacity: theme.metrics.shadowAccent.opacity,
+										shadowRadius: theme.metrics.shadowAccent.radius,
+										elevation: theme.metrics.shadowAccent.elevation,
+									},
+								]}
+							>
+								<LinearGradient
+									colors={
+										theme.id === 'frutiger-aero'
+											? isPlaying
+												? ['rgba(255,100,100,0.9)', 'rgba(200,30,30,0.95)']
+												: ['rgba(100,255,150,0.9)', 'rgba(20,200,80,0.95)']
+											: (theme.colors.accentGradient as [string, string, ...string[]])
+									}
+									start={{ x: 0, y: 0 }}
+									end={{ x: 1, y: 1 }}
+									style={[
+										styles.playButtonGradient,
+										(theme.id === 'frutiger-aero' || buttonWidget === 'tactile-toggle') && {
+											borderWidth: 1.5,
+											borderColor: 'rgba(255,255,255,0.7)',
+										}
+									]}
+								>
+									<Ionicons name={isPlaying ? 'pause' : 'play'} size={36} color={theme.colors.textOnAccent} />
+								</LinearGradient>
+							</TouchableOpacity>
+						)}
 
 						{/* Next */}
-						<TouchableOpacity
-							onPress={handleNext}
-							style={[
-								styles.controlButton,
-								{
-									backgroundColor: theme.colors.controlBackground,
-									borderRadius: 28,
-								},
-							]}
-						>
-							<Ionicons name="play-skip-forward" size={28} color={theme.colors.controlIcon} />
-						</TouchableOpacity>
+						{theme.id === 'neomorphism' ? (
+							<TouchableOpacity onPress={handleNext}>
+								<NeumorphicSurface borderRadius={28} elevation={4} style={styles.controlButton}>
+									<Ionicons name="play-skip-forward" size={24} color={theme.colors.controlIcon} />
+								</NeumorphicSurface>
+							</TouchableOpacity>
+						) : (
+							<TouchableOpacity
+								onPress={handleNext}
+								style={[
+									styles.controlButton,
+									{
+										backgroundColor: theme.colors.controlBackground,
+										borderRadius: 28,
+										borderWidth: theme.id === 'skeuomorphism' ? 1.5 : 0,
+										borderColor: 'rgba(255, 255, 255, 0.12)',
+									},
+								]}
+							>
+								<Ionicons name="play-skip-forward" size={28} color={theme.colors.controlIcon} />
+							</TouchableOpacity>
+						)}
 
 						{/* Repeat */}
 						<TouchableOpacity
@@ -325,7 +464,20 @@ export default function PlayerScreen() {
 
 					{/* Volume */}
 					<View style={styles.volumeContainer}>
-						<VolumeSlider />
+						{volumeWidget === 'steampunk-cog' ? (
+							<SteampunkCogVolume
+								accentColor={theme.colors.accentPrimary}
+								themeId={theme.id}
+								audioReactive={theme.widgets?.audioReactivity}
+							/>
+						) : volumeWidget === 'rotary-knob' ? (
+							<RotaryVolumeKnob
+								accentColor={theme.colors.accentPrimary}
+								themeId={theme.id}
+							/>
+						) : (
+							<VolumeSlider />
+						)}
 					</View>
 				</View>
 			</SafeAreaView>
@@ -366,6 +518,19 @@ const styles = StyleSheet.create({
 		paddingHorizontal: 24,
 		justifyContent: 'center',
 		gap: 20,
+	},
+	albumStageContainer: {
+		alignSelf: 'center',
+		alignItems: 'center',
+		justifyContent: 'center',
+		position: 'relative',
+		overflow: 'visible',
+	},
+	albumElementBox: {
+		alignItems: 'center',
+		justifyContent: 'center',
+		position: 'relative',
+		zIndex: 2,
 	},
 	albumCard: {
 		alignSelf: 'center',

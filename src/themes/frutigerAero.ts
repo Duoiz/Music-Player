@@ -112,4 +112,14 @@ export const frutigerAero: ThemeStyle = {
 		textShadowOffset: { width: 0, height: 1 },
 		textShadowRadius: 2,
 	},
+	widgets: {
+		volumeControl: 'slider',
+		artworkDisplay: 'glass-cylinder',
+		playButton: 'glossy-orb',
+		audioReactivity: {
+			enabled: true,
+			intensity: 'dynamic',
+			target: 'glow',
+		},
+	},
 }
