@@ -45,11 +45,17 @@ export const applyEQToPlayer = async (bands: EQBand[], enabled: boolean) => {
 			await TrackPlayerModule.setEqualizerEnabled(enabled)
 			if (enabled) {
 				await TrackPlayerModule.setEqualizerBands(gains)
+				if (typeof TrackPlayerModule?.setEqualizerGainCompensation === 'function') {
+					await TrackPlayerModule.setEqualizerGainCompensation(350)
+				}
 			}
 		} else if (typeof (TrackPlayer as any)?.setEqualizerEnabled === 'function') {
 			await (TrackPlayer as any).setEqualizerEnabled(enabled)
 			if (enabled) {
 				await (TrackPlayer as any).setEqualizerBands(gains)
+				if (typeof (TrackPlayer as any)?.setEqualizerGainCompensation === 'function') {
+					await (TrackPlayer as any).setEqualizerGainCompensation(350)
+				}
 			}
 		} else {
 			console.warn('[EQ] setEqualizerEnabled method not found on native module')

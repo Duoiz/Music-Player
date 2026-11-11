@@ -18,6 +18,7 @@ export interface Track {
 	artist: string
 	artwork: string
 	duration: number
+	album?: string
 }
 
 export interface SearchResult {
@@ -349,3 +350,6 @@ export interface APIConfig {
 	baseUrl: string
 	timeout: number
 }
+
+export * from './playlistGenerator'
+

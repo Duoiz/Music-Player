@@ -11,6 +11,7 @@ import {
 } from 'react-native-reanimated'
 import { usePlayerStore } from '../stores/playerStore'
 import { useEQStore } from '../stores/eqStore'
+import { useVisualizerLifecycleStore } from '../stores/visualizerLifecycleStore'
 import type { BeatPulseConfig } from '../types'
 
 /**
@@ -23,6 +24,8 @@ export function useBeatPulseReactivity(overrideConfig?: Partial<BeatPulseConfig>
 	const bands = useEQStore((s) => s.bands)
 	const isEQEnabled = useEQStore((s) => s.isEnabled)
 	const storeConfig = useEQStore((s) => s.beatPulse)
+
+	const isSuspended = useVisualizerLifecycleStore((s) => s.isSuspended)
 
 	const config: BeatPulseConfig = {
 		...storeConfig,
@@ -86,7 +89,7 @@ export function useBeatPulseReactivity(overrideConfig?: Partial<BeatPulseConfig>
 	useEffect(() => {
 		const isEnabled = config.enabled && config.type !== 'off'
 
-		if (!isPlaying || !isEnabled) {
+		if (!isPlaying || !isEnabled || isSuspended) {
 			cancelAnimation(pulseVal)
 			cancelAnimation(flareVal)
 			pulseVal.value = withTiming(0, { duration: 250 })
@@ -131,6 +134,7 @@ export function useBeatPulseReactivity(overrideConfig?: Partial<BeatPulseConfig>
 		}
 	}, [
 		isPlaying,
+		isSuspended,
 		config.enabled,
 		config.type,
 		config.intensity,

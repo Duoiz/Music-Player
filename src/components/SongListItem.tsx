@@ -6,6 +6,7 @@ import { useTheme } from './ThemeProvider'
 import { useDownloadStore } from '../stores/downloadStore'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence } from 'react-native-reanimated'
 import { formatTime } from '../utils/formatTime'
+import { EditSongTagsModal } from './EditSongTagsModal'
 import type { Song } from '../types'
 
 interface SongListItemProps {
@@ -36,6 +37,7 @@ export const SongListItem = React.memo(function SongListItem({
 
 	const pulseOpacity = useSharedValue(1)
 	const [menuVisible, setMenuVisible] = React.useState(false)
+	const [editTagsVisible, setEditTagsVisible] = React.useState(false)
 
 	React.useEffect(() => {
 		if (theme.id === 'frutiger-aero' && isActive) {
@@ -284,22 +286,43 @@ export const SongListItem = React.memo(function SongListItem({
 											Add to Playlist
 										</Text>
 									</TouchableOpacity>
-									
+
 									<TouchableOpacity 
 										style={styles.modalOption}
 										onPress={() => {
 											setMenuVisible(false)
-											if (onMenuAction) onMenuAction('download', song)
+											setEditTagsVisible(true)
 										}}
 									>
-										<Ionicons name={isDownloaded ? "trash-outline" : "download-outline"} size={20} color={theme.id === 'frutiger-aero' ? 'rgba(180,240,255,0.95)' : theme.colors.textPrimary} />
+										<Ionicons name="sparkles-outline" size={20} color={theme.id === 'frutiger-aero' ? 'rgba(180,240,255,0.95)' : theme.colors.textPrimary} />
 										<Text style={[styles.modalOptionText, theme.id === 'frutiger-aero' ? { color: 'rgba(180,240,255,0.95)' } : { color: theme.colors.textPrimary }]}>
-											{isDownloaded ? 'Remove Download' : 'Download for Offline'}
+											Edit Mood & Energy
 										</Text>
 									</TouchableOpacity>
+									
+									{!song.id.startsWith('local_') && (
+										<TouchableOpacity 
+											style={styles.modalOption}
+											onPress={() => {
+												setMenuVisible(false)
+												if (onMenuAction) onMenuAction('download', song)
+											}}
+										>
+											<Ionicons name={isDownloaded ? "trash-outline" : "download-outline"} size={20} color={theme.id === 'frutiger-aero' ? 'rgba(180,240,255,0.95)' : theme.colors.textPrimary} />
+											<Text style={[styles.modalOptionText, theme.id === 'frutiger-aero' ? { color: 'rgba(180,240,255,0.95)' } : { color: theme.colors.textPrimary }]}>
+												{isDownloaded ? 'Remove Download' : 'Download for Offline'}
+											</Text>
+										</TouchableOpacity>
+									)}
 								</View>
 							</Pressable>
 						</Modal>
+
+						<EditSongTagsModal
+							visible={editTagsVisible}
+							song={song}
+							onClose={() => setEditTagsVisible(false)}
+						/>
 					</>
 				)}
 			</View>

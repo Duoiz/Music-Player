@@ -8,6 +8,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from './ThemeProvider'
 import { useBeatPulseReactivity } from '../hooks/useBeatPulseReactivity'
+import { useVisualizerLifecycleStore } from '../stores/visualizerLifecycleStore'
 import type { BeatPulseColor, BeatPulseConfig, ThemeStyle } from '../types'
 
 export interface SideBeatPulseProps {
@@ -144,6 +145,7 @@ export function SideBeatPulse({
 	overrideConfig,
 }: SideBeatPulseProps) {
 	const theme = useTheme()
+	const isSuspended = useVisualizerLifecycleStore((s) => s.isSuspended)
 	const {
 		pulseVal,
 		leftFlankStyle,
@@ -164,7 +166,7 @@ export function SideBeatPulse({
 		[config.colorMode, theme, config.customColor, artworkColor]
 	)
 
-	if (!config.enabled || config.type === 'off') {
+	if (!config.enabled || config.type === 'off' || isSuspended) {
 		return null
 	}
 

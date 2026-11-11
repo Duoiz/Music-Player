@@ -7,6 +7,7 @@ import {
 import { usePlayerStore } from '../stores/playerStore'
 import { useEQStore } from '../stores/eqStore'
 import { useSpectrumStore } from '../stores/spectrumStore'
+import { useVisualizerLifecycleStore } from '../stores/visualizerLifecycleStore'
 import type { BeatPulseConfig } from '../types'
 
 export function resampleBands(bands: Float32Array | number[], targetCount: number): number[] {
@@ -53,6 +54,8 @@ export function useSpectrumData(
 	const currentEnvelope = useSpectrumStore((s) => s.currentEnvelope)
 	const loadSpectrum = useSpectrumStore((s) => s.loadSpectrum)
 
+	const isSuspended = useVisualizerLifecycleStore((s) => s.isSuspended)
+
 	const config = {
 		...storeConfig,
 		...overrideConfig,
@@ -61,6 +64,7 @@ export function useSpectrumData(
 	const magnitudes = useSharedValue<number[]>(new Array(barCount).fill(0))
 	const lastNativeUpdate = useSharedValue<number>(0)
 	const isPlayingShared = useSharedValue<boolean>(isPlaying)
+	const isSuspendedShared = useSharedValue<boolean>(isSuspended)
 	const barCountShared = useSharedValue<number>(barCount)
 	const isRealAudio = useSharedValue<boolean>(false)
 
@@ -72,9 +76,9 @@ export function useSpectrumData(
 	const envelopeFps = useSharedValue<number>(20)
 	const envelopeBands = useSharedValue<number>(16)
 
-	// Preload spectrum whenever current track changes
+	// Preload spectrum whenever current track changes (skip for local files)
 	useEffect(() => {
-		if (currentTrack?.id) {
+		if (currentTrack?.id && !currentTrack.id.startsWith('local_')) {
 			loadSpectrum(currentTrack.id)
 		}
 	}, [currentTrack?.id, loadSpectrum])
@@ -83,6 +87,10 @@ export function useSpectrumData(
 	useEffect(() => {
 		isPlayingShared.value = isPlaying
 	}, [isPlaying, isPlayingShared])
+
+	useEffect(() => {
+		isSuspendedShared.value = isSuspended
+	}, [isSuspended, isSuspendedShared])
 
 	// Track sub-millisecond continuous audio progress
 	useEffect(() => {
@@ -153,6 +161,11 @@ export function useSpectrumData(
 	// 60fps UI-thread acoustic physics simulator & real audio pipeline
 	const frameCallback = useFrameCallback((frameInfo) => {
 		'worklet'
+		// Immediately return if visualizer is suspended (background or pre-stabilization)
+		if (isSuspendedShared.value) {
+			return
+		}
+
 		const now = Date.now()
 		// If native FFT is actively pumping within last 250ms, yield to real native data
 		if (now - lastNativeUpdate.value < 250) {
@@ -270,7 +283,17 @@ export function useSpectrumData(
 		}
 
 		magnitudes.value = next
-	}, true)
+	}, !isSuspended && isPlaying)
+
+	// Dynamically activate/deactivate frame callback based on suspension and playback
+	useEffect(() => {
+		if (isSuspended || !isPlaying) {
+			frameCallback.setActive(false)
+			magnitudes.value = new Array(barCountShared.value).fill(0)
+		} else {
+			frameCallback.setActive(true)
+		}
+	}, [isSuspended, isPlaying, frameCallback, barCountShared, magnitudes])
 
 	// Clean up frame callback on unmount
 	useEffect(() => {

@@ -11,6 +11,7 @@ import { getBeatPulsePalette } from './SideBeatPulse'
 import { SpectrumVisualizer } from './SpectrumVisualizer'
 import { useAlbumGeometry, AlbumGeometry } from '../hooks/useAlbumGeometry'
 import { useSpectrumData } from '../hooks/useSpectrumData'
+import { useVisualizerLifecycleStore } from '../stores/visualizerLifecycleStore'
 import type { BeatPulseConfig, VisualizerMode } from '../types'
 
 export interface AlbumBeatVisualizerProps {
@@ -247,6 +248,7 @@ export const AlbumBeatVisualizer = React.memo(function AlbumBeatVisualizer({
 	albumGeometry,
 }: AlbumBeatVisualizerProps) {
 	const theme = useTheme()
+	const isSuspended = useVisualizerLifecycleStore((s) => s.isSuspended)
 	const {
 		pulseVal,
 		config,
@@ -390,8 +392,8 @@ export const AlbumBeatVisualizer = React.memo(function AlbumBeatVisualizer({
 		[targetWidth, targetHeight, effectiveBorderRadius]
 	)
 
-	// Guard: Do not render until real dimensions exist
-	if (!config.enabled || config.type === 'off' || targetWidth <= 0 || targetHeight <= 0) {
+	// Guard: Do not render until real dimensions exist or if visualizer is suspended in background
+	if (!config.enabled || config.type === 'off' || targetWidth <= 0 || targetHeight <= 0 || isSuspended) {
 		return null
 	}
 

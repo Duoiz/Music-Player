@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import TrackPlayer, { RepeatMode as TPRepeatMode } from 'react-native-track-player'
 import type { Track, RepeatMode } from '../types'
 import { useSpectrumStore } from './spectrumStore'
+import { useAutoPlaylistStore } from './autoPlaylistStore'
 
 interface PlayerStore {
 	// State
@@ -72,6 +73,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 		try {
 			if (track) {
 				set({ isLoading: true })
+				// Record track play count & recency for auto-playlist anti-staleness weighting
+				useAutoPlaylistStore.getState().recordPlay(track.id)
 				// Trigger background spectrum analysis/load in parallel with stream buffering
 				useSpectrumStore.getState().loadSpectrum(track.id).catch(() => {})
 
