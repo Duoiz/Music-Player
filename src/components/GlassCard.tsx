@@ -10,6 +10,8 @@ interface GlassCardProps {
 	style?: StyleProp<ViewStyle>
 	intensity?: 'light' | 'medium' | 'heavy'
 	variant?: 'default' | 'dark'
+	/** Stretch to fill the parent's height (use with a flex:1 style). */
+	fill?: boolean
 }
 
 /**
@@ -20,7 +22,7 @@ interface GlassCardProps {
  * - Neomorphism: Solid bg with dual shadows (no blur)
  * - Skeuomorphism: Solid metallic bg with textured border (no blur)
  */
-export function GlassCard({ children, style, intensity = 'medium', variant = 'default' }: GlassCardProps) {
+export function GlassCard({ children, style, intensity = 'medium', variant = 'default', fill = false }: GlassCardProps) {
 	const theme = useTheme()
 	const shadow = intensity === 'light'
 		? theme.metrics.shadowLight
@@ -62,7 +64,7 @@ export function GlassCard({ children, style, intensity = 'medium', variant = 'de
 	if (theme.useBlur) {
 		return (
 			<View style={[containerStyle, style]}>
-				<BlurView intensity={theme.metrics.blurIntensity} style={styles.fill}>
+				<BlurView intensity={theme.metrics.blurIntensity} style={[styles.fill, fill && styles.grow]}>
 					<LinearGradient
 						colors={
 							variant === 'dark' && theme.colors.innerPanelBackground
@@ -73,6 +75,7 @@ export function GlassCard({ children, style, intensity = 'medium', variant = 'de
 						end={{ x: 0, y: 1 }}
 						style={[
 							styles.fill,
+							fill && styles.grow,
 							{
 								borderRadius: theme.metrics.borderRadiusLarge,
 								padding: theme.metrics.cardPadding,
@@ -168,5 +171,8 @@ export function GlassCard({ children, style, intensity = 'medium', variant = 'de
 const styles = StyleSheet.create({
 	fill: {
 		width: '100%',
+	},
+	grow: {
+		flex: 1,
 	},
 })
