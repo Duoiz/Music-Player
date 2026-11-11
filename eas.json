@@ -6,16 +6,28 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "channel": "development",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://duoiz--music-player-backend-web.modal.run"
+      }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://duoiz--music-player-backend-web.modal.run"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://duoiz--music-player-backend-web.modal.run"
+      }
     }
   },
   "submit": {
